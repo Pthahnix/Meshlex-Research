@@ -146,3 +146,59 @@ class PatchDataset(Dataset):
             "n_faces": n_faces,
             "n_vertices": n_verts,
         }
+
+
+class PatchGraphDataset(Dataset):
+    """PyTorch Geometric compatible dataset. Returns Data objects
+    with graph structure for SAGEConv + padded vertex targets for decoder.
+    """
+
+    MAX_VERTICES = 60
+
+    def __init__(self, patch_dir: str):
+        self.patch_dir = Path(patch_dir)
+        self.files = sorted(self.patch_dir.glob("*.npz"))
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        data = np.load(str(self.files[idx]))
+        faces = data["faces"]
+        local_verts = data["local_vertices"].astype(np.float32)
+
+        # Face features (F, 15)
+        face_feats = compute_face_features(local_verts, faces)
+
+        # Face adjacency graph
+        edge_index = build_face_edge_index(faces)
+
+        n_verts = local_verts.shape[0]
+        n_faces = faces.shape[0]
+
+        # Pad vertices to max size
+        padded_verts = np.zeros((self.MAX_VERTICES, 3), dtype=np.float32)
+        padded_verts[:n_verts] = local_verts
+
+        return _PatchData(
+            x=torch.tensor(face_feats, dtype=torch.float32),
+            edge_index=torch.tensor(edge_index, dtype=torch.long),
+            gt_vertices=torch.tensor(padded_verts, dtype=torch.float32),
+            n_vertices=torch.tensor(n_verts, dtype=torch.long),
+            n_faces=torch.tensor(n_faces, dtype=torch.long),
+        )
+
+
+class _PatchData:
+    """Wrapper around PyG Data that prevents concatenation of gt_vertices."""
+
+    def __new__(cls, **kwargs):
+        from torch_geometric.data import Data as PyGData
+
+        class PatchData(PyGData):
+            def __cat_dim__(self, key, value, *args, **kw):
+                if key in ("gt_vertices",):
+                    return None  # stack instead of cat
+                return super().__cat_dim__(key, value, *args, **kw)
+
+        return PatchData(**kwargs)

@@ -4,7 +4,7 @@ import trimesh
 import json
 from pathlib import Path
 
-from src.patch_dataset import process_and_save_patches, PatchDataset
+from src.patch_dataset import process_and_save_patches, PatchDataset, PatchGraphDataset
 
 
 def test_process_and_save(tmp_path):
@@ -53,3 +53,26 @@ def test_patch_dataset_loads(tmp_path):
     assert "local_vertices" in sample  # (V, 3) target
     assert "n_vertices" in sample      # int
     assert "n_faces" in sample         # int
+
+
+def test_graph_dataset_and_loader(tmp_path):
+    """PatchGraphDataset should work with PyG DataLoader."""
+    from torch_geometric.loader import DataLoader
+
+    mesh = trimesh.creation.icosphere(subdivisions=3)
+    obj_path = tmp_path / "sphere.obj"
+    mesh.export(str(obj_path))
+
+    patch_dir = tmp_path / "patches"
+    process_and_save_patches(str(obj_path), "sphere", str(patch_dir))
+
+    ds = PatchGraphDataset(str(patch_dir))
+    loader = DataLoader(ds, batch_size=4, shuffle=False)
+    batch = next(iter(loader))
+
+    assert hasattr(batch, "x")           # (N_total, 15) face features
+    assert hasattr(batch, "edge_index")  # (2, E_total)
+    assert hasattr(batch, "batch")       # (N_total,) batch vector
+    assert hasattr(batch, "gt_vertices") # (B, max_V, 3)
+    assert hasattr(batch, "n_vertices")  # (B,)
+    assert batch.gt_vertices.shape[0] == 4
