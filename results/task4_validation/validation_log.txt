@@ -1,0 +1,150 @@
+MeshLex Validation: Task 4 — Patch Dataset Serialization
+Timestamp: 2026-03-07 08:36:27
+Python: 3.11.10 (main, Sep  7 2024, 18:35:41) [GCC 11.4.0]
+
+======================================================================
+STEP 1: Patch Serialization (process_and_save_patches)
+======================================================================
+Found 4 meshes with >=200 faces for serialization test
+
+  [bunny]
+    Patches: 29
+    Face counts: [35, 34, 35, 33, 33, 34, 34, 35, 35, 35, 34, 35, 33, 34, 35, 34, 34, 33, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35]
+    NPZ files: 29
+    Time: 0.036s
+    NPZ keys: ['faces', 'vertices', 'local_vertices', 'centroid', 'principal_axes', 'scale', 'boundary_vertices', 'global_face_indices']
+    faces shape: (35, 3)
+    local_vertices shape: (27, 3)
+    centroid: [-0.4239784   0.42311436  0.30163403]
+    scale: [0.38686637]
+  [capsule]
+    Patches: 13
+    Face counts: [35, 34, 34, 35, 35, 35, 35, 35, 34, 34, 34, 34, 34]
+    NPZ files: 13
+    Time: 0.109s
+    NPZ keys: ['faces', 'vertices', 'local_vertices', 'centroid', 'principal_axes', 'scale', 'boundary_vertices', 'global_face_indices']
+    faces shape: (35, 3)
+    local_vertices shape: (25, 3)
+    centroid: [ 0.08097539  0.00755538 -0.97049516]
+    scale: [0.18507054]
+  [icosphere_fine]
+    Patches: 29
+    Face counts: [34, 35, 35, 35, 35, 35, 34, 34, 33, 35, 34, 35, 35, 35, 35, 33, 34, 34, 35, 35, 35, 34, 34, 33, 34, 35, 35, 35, 35]
+    NPZ files: 29
+    Time: 0.037s
+    NPZ keys: ['faces', 'vertices', 'local_vertices', 'centroid', 'principal_axes', 'scale', 'boundary_vertices', 'global_face_indices']
+    faces shape: (34, 3)
+    local_vertices shape: (26, 3)
+    centroid: [-0.62180065  0.67812693  0.10739612]
+    scale: [0.56857211]
+  [torus]
+    Patches: 29
+    Face counts: [36, 35, 36, 36, 35, 34, 36, 34, 36, 34, 34, 34, 36, 36, 36, 36, 35, 36, 36, 36, 36, 34, 35, 36, 34, 35, 35, 36, 36]
+    NPZ files: 29
+    Time: 0.037s
+    NPZ keys: ['faces', 'vertices', 'local_vertices', 'centroid', 'principal_axes', 'scale', 'boundary_vertices', 'global_face_indices']
+    faces shape: (36, 3)
+    local_vertices shape: (27, 3)
+    centroid: [ 0.80322405  0.20748264 -0.14016277]
+    scale: [0.487057]
+
+Total: 100 patches from 4 meshes
+
+======================================================================
+STEP 2: PatchDataset Loading & Feature Verification
+======================================================================
+
+  [bunny] Dataset size: 29
+    Sample 0:
+      face_features: torch.Size([80, 15]), dtype=torch.float32
+      edge_index: torch.Size([2, 88]), dtype=torch.int64
+      local_vertices: torch.Size([60, 3]), dtype=torch.float32
+      n_faces=35, n_vertices=27
+      Non-zero face rows: 35 (expected 35)
+    Sample 1:
+      face_features: torch.Size([80, 15]), dtype=torch.float32
+      edge_index: torch.Size([2, 92]), dtype=torch.int64
+      local_vertices: torch.Size([60, 3]), dtype=torch.float32
+      n_faces=34, n_vertices=23
+      Non-zero face rows: 34 (expected 34)
+    Sample 2:
+      face_features: torch.Size([80, 15]), dtype=torch.float32
+      edge_index: torch.Size([2, 88]), dtype=torch.int64
+      local_vertices: torch.Size([60, 3]), dtype=torch.float32
+      n_faces=35, n_vertices=27
+      Non-zero face rows: 35 (expected 35)
+
+  [capsule] Dataset size: 13
+    Sample 0:
+      face_features: torch.Size([80, 15]), dtype=torch.float32
+      edge_index: torch.Size([2, 92]), dtype=torch.int64
+      local_vertices: torch.Size([60, 3]), dtype=torch.float32
+      n_faces=35, n_vertices=25
+      Non-zero face rows: 35 (expected 35)
+    Sample 1:
+      face_features: torch.Size([80, 15]), dtype=torch.float32
+      edge_index: torch.Size([2, 86]), dtype=torch.int64
+      local_vertices: torch.Size([60, 3]), dtype=torch.float32
+      n_faces=34, n_vertices=26
+      Non-zero face rows: 34 (expected 34)
+    Sample 2:
+      face_features: torch.Size([80, 15]), dtype=torch.float32
+      edge_index: torch.Size([2, 86]), dtype=torch.int64
+      local_vertices: torch.Size([60, 3]), dtype=torch.float32
+      n_faces=34, n_vertices=26
+      Non-zero face rows: 34 (expected 34)
+
+  [icosphere_fine] Dataset size: 29
+    Sample 0:
+      face_features: torch.Size([80, 15]), dtype=torch.float32
+      edge_index: torch.Size([2, 86]), dtype=torch.int64
+      local_vertices: torch.Size([60, 3]), dtype=torch.float32
+      n_faces=34, n_vertices=26
+      Non-zero face rows: 34 (expected 34)
+    Sample 1:
+      face_features: torch.Size([80, 15]), dtype=torch.float32
+      edge_index: torch.Size([2, 84]), dtype=torch.int64
+      local_vertices: torch.Size([60, 3]), dtype=torch.float32
+      n_faces=35, n_vertices=29
+      Non-zero face rows: 35 (expected 35)
+    Sample 2:
+      face_features: torch.Size([80, 15]), dtype=torch.float32
+      edge_index: torch.Size([2, 94]), dtype=torch.int64
+      local_vertices: torch.Size([60, 3]), dtype=torch.float32
+      n_faces=35, n_vertices=24
+      Non-zero face rows: 35 (expected 35)
+
+  [torus] Dataset size: 29
+    Sample 0:
+      face_features: torch.Size([80, 15]), dtype=torch.float32
+      edge_index: torch.Size([2, 92]), dtype=torch.int64
+      local_vertices: torch.Size([60, 3]), dtype=torch.float32
+      n_faces=36, n_vertices=27
+      Non-zero face rows: 36 (expected 36)
+    Sample 1:
+      face_features: torch.Size([80, 15]), dtype=torch.float32
+      edge_index: torch.Size([2, 88]), dtype=torch.int64
+      local_vertices: torch.Size([60, 3]), dtype=torch.float32
+      n_faces=35, n_vertices=27
+      Non-zero face rows: 35 (expected 35)
+    Sample 2:
+      face_features: torch.Size([80, 15]), dtype=torch.float32
+      edge_index: torch.Size([2, 88]), dtype=torch.int64
+      local_vertices: torch.Size([60, 3]), dtype=torch.float32
+      n_faces=36, n_vertices=29
+      Non-zero face rows: 36 (expected 36)
+
+All 12 samples loaded and verified successfully
+
+======================================================================
+STEP 3: Visualization
+======================================================================
+Plot saved: results/task4_validation/task4_summary.png
+Plot saved: results/task4_validation/task4_edge_stats.png
+Mesh preview saved: results/task4_validation/bunny_preview.png
+Mesh preview saved: results/task4_validation/capsule_preview.png
+Mesh preview saved: results/task4_validation/icosphere_fine_preview.png
+Mesh preview saved: results/task4_validation/torus_preview.png
+
+Summary saved: results/task4_validation/summary.json
+Report saved: results/task4_validation/report.md
