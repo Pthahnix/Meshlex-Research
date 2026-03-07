@@ -41,10 +41,16 @@
 
 ## Current Status
 
-**当前阶段**：编写 MeshLex 可行性验证实验的详细 plan（06 文档）
+**当前阶段**：验证实验计划完成（06 研究计划 + 07 代码级实施计划），待用户确认后开始实施。
 
 ## Conventions
 
 - 文档语言：中英混合（技术术语英文，说明中文）
 - 文档编号：两位数 ID，按时间顺序递增
 - 所有研究文档保存在 `.context/` 下
+
+## Git Workflow — 重要
+
+- **尽可能频繁 commit**：完成任何一小部分内容、一段测试、一个实验结果，都要立即 commit
+- **不要 push**：push 由用户亲自操作，Claude 不执行 `git push`
+- commit 粒度越细越好：一个函数写完 commit、一个测试通过 commit、一个可视化生成 commit
