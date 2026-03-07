@@ -1,0 +1,38 @@
+MeshLex Validation: Tasks 8-10 — VQ-VAE + Training Loop
+Timestamp: 2026-03-07 08:53:42
+
+======================================================================
+STEP 0: Prepare patches
+======================================================================
+Patch directories: ['results/task8_10_validation/patches/bunny', 'results/task8_10_validation/patches/capsule', 'results/task8_10_validation/patches/icosphere_fine', 'results/task8_10_validation/patches/torus']
+Total training patches: 100
+
+======================================================================
+STEP 1: Model Creation
+======================================================================
+Device: cpu
+Model parameters: 199,107
+Codebook size: 64 (small for validation)
+Embed dim: 64, Hidden dim: 128
+
+======================================================================
+STEP 2: Training (5 epochs smoke test)
+======================================================================
+
+Total training time: 5.1s
+
+Training history (5 epochs):
+  Epoch 0: loss=0.4797, recon=0.4797, util=9.4%
+  Epoch 1: loss=0.3570, recon=0.3570, util=1.6%
+  Epoch 2: loss=1.0659, recon=0.3353, util=3.1%
+  Epoch 3: loss=1.0298, recon=0.3256, util=3.1%
+  Epoch 4: loss=1.0018, recon=0.3191, util=3.1%
+
+Loss decreased: False (0.4797 → 1.0018)
+
+======================================================================
+STEP 3: Visualizations
+======================================================================
+Plot saved: results/task8_10_validation/training_curves.png
+Mesh preview saved: results/task8_10_validation/bunny_preview.png
+Report saved: results/task8_10_validation/report.md
