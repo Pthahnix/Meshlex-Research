@@ -18,9 +18,41 @@
 ├── 03_experiment_design_lmm.md    # MeshFoundation v2 完整实验设计
 ├── 04_pplx_comprehensive_evaluation.md  # Perplexity 独立评审（Gap 88%/Idea 78/Exp 82）
 ├── 05_cc_pplx_debate.md           # CC × Perplexity 深度辩论 → 转向 MeshLex 方向
-├── 06_plan_meshlex_validation.md  # [WIP] MeshLex 可行性验证实验 plan
+├── 06_plan_meshlex_validation.md  # MeshLex 可行性验证实验 plan
+├── 07_impl_plan_meshlex_validation.md  # 14-Task 实现计划（已完成）
 ├── material/                      # 10 篇核心论文的分析摘要
 └── paper/                         # 300+ 篇论文的 markdown 原文
+
+src/                               # 核心代码
+├── data_prep.py                   # Mesh 加载、降面、归一化
+├── patch_segment.py               # METIS Patch 分割 + PCA 归一化
+├── patch_dataset.py               # NPZ 序列化 + PyTorch/PyG Dataset
+├── model.py                       # PatchEncoder, SimVQCodebook, PatchDecoder, MeshLexVQVAE
+├── losses.py                      # Chamfer Distance loss
+├── trainer.py                     # Training loop
+└── evaluate.py                    # Evaluation metrics + Go/No-Go
+
+scripts/                           # 运行脚本
+├── train.py                       # 训练入口（支持 --resume）
+├── evaluate.py                    # 评估入口
+├── visualize.py                   # 可视化（t-SNE, utilization, curves）
+├── init_codebook.py               # K-means codebook 初始化
+├── run_preprocessing.py           # 批量预处理 ShapeNet
+└── validate_task*.py              # 各 Task 验证脚本
+
+tests/                             # 17 unit tests
+├── test_data_prep.py              # 2 tests
+├── test_patch_segment.py          # 4 tests
+├── test_patch_dataset.py          # 3 tests
+└── test_model.py                  # 8 tests
+
+results/                           # 验证产出（commit 到 repo）
+├── task1_3_validation/            # 数据预处理 + Patch 分割验证
+├── task4_validation/              # Dataset 序列化验证
+├── task5_7_validation/            # Encoder/Codebook/Decoder 验证
+├── task8_10_validation/           # VQ-VAE + Training 验证
+├── task12_validation/             # Visualization 验证
+└── task13_validation/             # K-means init 验证
 ```
 
 ## Research Evolution
@@ -41,7 +73,9 @@
 
 ## Current Status
 
-**当前阶段**：验证实验代码实施中。Task 1-3 已完成（环境搭建、数据预处理、Patch 分割），从 Task 4 继续。
+**当前阶段**：验证实验代码实现已完成。14 个 Task 全部完成，17 个单元测试全部通过，各阶段真实数据验证产出已保存至 `results/`。
+
+下一步：在完整 ShapeNet 数据上运行端到端训练+评估流程（参见 `RUN_GUIDE.md`），做出 Go/No-Go 决策。
 
 ## Conventions
 
