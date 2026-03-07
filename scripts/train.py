@@ -21,6 +21,8 @@ def main():
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--vq_start_epoch", type=int, default=20)
     parser.add_argument("--checkpoint_dir", type=str, default="data/checkpoints")
+    parser.add_argument("--resume", type=str, default=None,
+                        help="Resume from checkpoint (loads model + optimizer state)")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -44,6 +46,13 @@ def main():
         embed_dim=args.embed_dim,
         hidden_dim=args.hidden_dim,
     )
+
+    # Resume from checkpoint if provided
+    if args.resume:
+        ckpt = torch.load(args.resume, map_location=device, weights_only=False)
+        model.load_state_dict(ckpt["model_state_dict"])
+        print(f"Resumed model from {args.resume} (epoch {ckpt.get('epoch', '?')})")
+
     n_params = sum(p.numel() for p in model.parameters())
     print(f"Model parameters: {n_params:,}")
 
