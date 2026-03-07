@@ -1,0 +1,23 @@
+{
+  "same_category": {
+    "mean_cd": 326.1652107422168,
+    "std_cd": 36.0417053850632,
+    "utilization": 0.004638671875,
+    "n_unique_codes": 19,
+    "total_codes": 4096
+  },
+  "cross_category": {
+    "mean_cd": 348.6312832683325,
+    "std_cd": 30.70970534982171,
+    "utilization": 0.005126953125,
+    "n_unique_codes": 21,
+    "total_codes": 4096
+  },
+  "go_nogo": {
+    "ratio": 1.0688794260889818,
+    "decision": "STRONG GO",
+    "next_step": "Proceed to full MeshLex experiment design",
+    "same_cat_cd": 326.1652107422168,
+    "cross_cat_cd": 348.6312832683325
+  }
+}
