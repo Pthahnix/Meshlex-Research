@@ -50,24 +50,39 @@ def evaluate_reconstruction(model, dataset, device="cuda", batch_size=256):
     }
 
 
-def compute_go_nogo(same_cat_cd: float, cross_cat_cd: float):
-    """Apply Go/No-Go decision matrix.
+def compute_go_nogo(same_cat_cd: float, cross_cat_cd: float, utilization: float = None):
+    """Apply Go/No-Go decision matrix with utilization gate.
 
     Args:
         same_cat_cd: mean CD on same-category test set
         cross_cat_cd: mean CD on cross-category test set
+        utilization: fraction of codebook used (0.0 to 1.0)
 
     Returns:
-        dict with ratio, decision, next_step
+        dict with ratio, decision, next_step, utilization
     """
     if same_cat_cd < 1e-10:
         return {"ratio": float("inf"), "decision": "ERROR", "next_step": "CD is zero — check data"}
 
     ratio = cross_cat_cd / same_cat_cd
 
-    if ratio < 1.2:
+    # Utilization gate — collapse detection
+    if utilization is not None and utilization < 0.10:
+        return {
+            "ratio": ratio,
+            "decision": "COLLAPSE - HALT",
+            "next_step": "Codebook collapsed (<10% utilization). Debug VQ training before proceeding.",
+            "same_cat_cd": same_cat_cd,
+            "cross_cat_cd": cross_cat_cd,
+            "utilization": utilization,
+        }
+
+    if ratio < 1.2 and (utilization is None or utilization > 0.30):
         decision = "STRONG GO"
         next_step = "Proceed to full MeshLex experiment design"
+    elif ratio < 1.2:
+        decision = "CONDITIONAL GO"
+        next_step = "CD ratio good but utilization suboptimal. Consider decoder enhancement (Phase B)."
     elif ratio < 2.0:
         decision = "WEAK GO"
         next_step = "Adjust story to 'transferable vocabulary', continue"
@@ -84,4 +99,5 @@ def compute_go_nogo(same_cat_cd: float, cross_cat_cd: float):
         "next_step": next_step,
         "same_cat_cd": same_cat_cd,
         "cross_cat_cd": cross_cat_cd,
+        "utilization": utilization,
     }
