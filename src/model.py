@@ -1,7 +1,22 @@
 """MeshLex model components: GNN Encoder, SimVQ Codebook, Patch Decoder."""
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv, global_mean_pool
+
+
+def rotation_trick(z: torch.Tensor, quantized: torch.Tensor) -> torch.Tensor:
+    """Rotation trick (ICLR 2025, Fifty et al.) — replaces straight-through estimator.
+
+    Instead of z + (quantized - z).detach(), applies a rotation transform that
+    provides better gradient flow while preserving the forward value of quantized.
+    """
+    e_hat = F.normalize(z, dim=-1)
+    q_hat = F.normalize(quantized, dim=-1)
+    r = F.normalize(e_hat + q_hat, dim=-1)
+    lam = quantized.norm(dim=-1, keepdim=True) / z.norm(dim=-1, keepdim=True).clamp(min=1e-8)
+    return lam * (z - 2 * (z * r).sum(dim=-1, keepdim=True) * r
+                  + 2 * (z * e_hat).sum(dim=-1, keepdim=True) * q_hat)
 
 
 class PatchEncoder(nn.Module):
@@ -56,10 +71,11 @@ class SimVQCodebook(nn.Module):
     - Quantized: taken from CW (not from C)
     """
 
-    def __init__(self, K: int = 4096, dim: int = 128):
+    def __init__(self, K: int = 4096, dim: int = 128, use_rotation: bool = False):
         super().__init__()
         self.K = K
         self.dim = dim
+        self.use_rotation = use_rotation
         self.codebook = nn.Embedding(K, dim)
         self.linear = nn.Linear(dim, dim, bias=False)
 
@@ -91,8 +107,11 @@ class SimVQCodebook(nn.Module):
         # Quantized from CW (not from C)
         quantized = quant_codebook[indices]  # (B, dim)
 
-        # Straight-through estimator
-        quantized_st = z + (quantized - z).detach()
+        # Gradient estimator: rotation trick or straight-through
+        if self.use_rotation:
+            quantized_st = rotation_trick(z, quantized)
+        else:
+            quantized_st = z + (quantized - z).detach()
 
         return quantized_st, indices
 
@@ -141,12 +160,19 @@ class PatchDecoder(nn.Module):
     with masking for variable vertex counts.
     """
 
-    def __init__(self, embed_dim: int = 128, max_vertices: int = 128):
+    def __init__(self, embed_dim: int = 128, max_vertices: int = 128, num_kv_tokens: int = 1):
         super().__init__()
         self.max_vertices = max_vertices
+        self.num_kv_tokens = num_kv_tokens
 
         # Learnable positional queries for each vertex slot
         self.vertex_queries = nn.Parameter(torch.randn(max_vertices, embed_dim) * 0.02)
+
+        # KV projection: expand single embedding to num_kv_tokens
+        if num_kv_tokens > 1:
+            self.kv_proj = nn.Linear(embed_dim, num_kv_tokens * embed_dim)
+        else:
+            self.kv_proj = None
 
         # Cross-attention: vertex queries attend to patch embedding
         self.cross_attn = nn.MultiheadAttention(
@@ -176,8 +202,13 @@ class PatchDecoder(nn.Module):
         # Expand queries for batch: (B, max_V, D)
         queries = self.vertex_queries.unsqueeze(0).expand(B, -1, -1)
 
-        # Key/Value = patch embedding repeated: (B, 1, D)
-        kv = z.unsqueeze(1)
+        # Key/Value from patch embedding
+        if self.kv_proj is not None:
+            # Multi-token KV: (B, num_kv_tokens, D)
+            kv = self.kv_proj(z).reshape(B, self.num_kv_tokens, -1)
+        else:
+            # Single-token KV: (B, 1, D)
+            kv = z.unsqueeze(1)
 
         # Cross-attention
         attn_out, _ = self.cross_attn(queries, kv, kv)
@@ -208,11 +239,13 @@ class MeshLexVQVAE(nn.Module):
         max_vertices: int = 128,
         lambda_commit: float = 1.0,
         lambda_embed: float = 1.0,
+        use_rotation: bool = False,
+        num_kv_tokens: int = 1,
     ):
         super().__init__()
         self.encoder = PatchEncoder(in_dim, hidden_dim, embed_dim)
-        self.codebook = SimVQCodebook(codebook_size, embed_dim)
-        self.decoder = PatchDecoder(embed_dim, max_vertices)
+        self.codebook = SimVQCodebook(codebook_size, embed_dim, use_rotation=use_rotation)
+        self.decoder = PatchDecoder(embed_dim, max_vertices, num_kv_tokens=num_kv_tokens)
         self.max_vertices = max_vertices
         self.lambda_commit = lambda_commit
         self.lambda_embed = lambda_embed

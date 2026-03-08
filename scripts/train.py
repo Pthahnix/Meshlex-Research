@@ -30,6 +30,10 @@ def main():
     parser.add_argument("--checkpoint_dir", type=str, default="data/checkpoints")
     parser.add_argument("--resume", type=str, default=None,
                         help="Resume from checkpoint (loads model + optimizer state)")
+    parser.add_argument("--use_rotation", action="store_true",
+                        help="Use rotation trick instead of straight-through (B-stage)")
+    parser.add_argument("--num_kv_tokens", type=int, default=1,
+                        help="Number of KV tokens in decoder (1=A-stage, 4=B-stage)")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -54,7 +58,12 @@ def main():
         hidden_dim=args.hidden_dim,
         lambda_commit=args.lambda_commit,
         lambda_embed=args.lambda_embed,
+        use_rotation=args.use_rotation,
+        num_kv_tokens=args.num_kv_tokens,
     )
+
+    stage = "B-stage" if (args.use_rotation or args.num_kv_tokens > 1) else "A-stage"
+    print(f"Model stage: {stage} (rotation={args.use_rotation}, kv_tokens={args.num_kv_tokens})")
 
     # Resume from checkpoint if provided
     if args.resume:
