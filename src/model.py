@@ -44,9 +44,16 @@ class PatchEncoder(nn.Module):
 
 
 class SimVQCodebook(nn.Module):
-    """SimVQ codebook with learnable linear reparameterization.
+    """SimVQ codebook with frozen C and learnable linear W.
 
     Reference: SimVQ (ICCV 2025) — linear transform prevents codebook collapse.
+    Official: https://github.com/youngsheen/SimVQ
+
+    Key design (aligned with official):
+    - C (codebook embedding) is FROZEN — never updated by gradient
+    - W (linear layer) is the ONLY learnable parameter
+    - Distance: z to CW (not z_proj to C)
+    - Quantized: taken from CW (not from C)
     """
 
     def __init__(self, K: int = 4096, dim: int = 128):
@@ -56,28 +63,33 @@ class SimVQCodebook(nn.Module):
         self.codebook = nn.Embedding(K, dim)
         self.linear = nn.Linear(dim, dim, bias=False)
 
-        # Initialize codebook from uniform sphere
-        nn.init.normal_(self.codebook.weight, std=0.02)
+        # Official SimVQ initialization
+        nn.init.normal_(self.codebook.weight, mean=0, std=dim ** -0.5)
         nn.init.orthogonal_(self.linear.weight)
+
+        # Freeze C — only W is learnable (SimVQ paper Remark 1)
+        self.codebook.weight.requires_grad = False
 
     def forward(self, z: torch.Tensor):
         """
         Args:
             z: (B, dim) encoder output
         Returns:
-            quantized: (B, dim) quantized embedding (straight-through)
+            quantized_st: (B, dim) quantized embedding (straight-through)
             indices: (B,) codebook indices
         """
-        z_proj = self.linear(z)  # SimVQ reparameterization
+        # Compute CW — transformed codebook
+        quant_codebook = self.linear(self.codebook.weight)  # (K, dim)
 
-        # L2 distance to codebook entries
+        # Distance: z to CW
         distances = torch.cdist(
-            z_proj.unsqueeze(0),
-            self.codebook.weight.unsqueeze(0),
+            z.unsqueeze(0), quant_codebook.unsqueeze(0),
         ).squeeze(0)  # (B, K)
 
         indices = distances.argmin(dim=-1)  # (B,)
-        quantized = self.codebook(indices)  # (B, dim)
+
+        # Quantized from CW (not from C)
+        quantized = quant_codebook[indices]  # (B, dim)
 
         # Straight-through estimator
         quantized_st = z + (quantized - z).detach()
@@ -85,13 +97,14 @@ class SimVQCodebook(nn.Module):
         return quantized_st, indices
 
     def compute_loss(self, z: torch.Tensor, quantized_st: torch.Tensor, indices: torch.Tensor):
-        """Compute commitment + embedding losses.
+        """Compute commitment + embedding losses in CW space.
 
         Returns:
-            commit_loss: ||z - sg(quantized)||²
-            embed_loss: ||sg(z) - quantized||²
+            commit_loss: ||z - sg(CW[idx])||²
+            embed_loss: ||sg(z) - CW[idx]||²
         """
-        quantized = self.codebook(indices)
+        quant_codebook = self.linear(self.codebook.weight)
+        quantized = quant_codebook[indices]
         commit_loss = torch.mean((z - quantized.detach()) ** 2)
         embed_loss = torch.mean((z.detach() - quantized) ** 2)
         return commit_loss, embed_loss
@@ -100,6 +113,11 @@ class SimVQCodebook(nn.Module):
     def get_utilization(self, indices: torch.Tensor) -> float:
         """Fraction of codebook entries used in given indices."""
         return indices.unique().numel() / self.K
+
+    @torch.no_grad()
+    def get_quant_codebook(self) -> torch.Tensor:
+        """Return CW — the effective codebook in encoder output space."""
+        return self.linear(self.codebook.weight)
 
 
 class PatchDecoder(nn.Module):
@@ -174,7 +192,7 @@ class MeshLexVQVAE(nn.Module):
         embed_dim: int = 128,
         codebook_size: int = 4096,
         max_vertices: int = 128,
-        lambda_commit: float = 0.25,
+        lambda_commit: float = 1.0,
         lambda_embed: float = 1.0,
     ):
         super().__init__()
