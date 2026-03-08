@@ -23,7 +23,8 @@
 ├── 08_experiment_execution_design.md  # Phase A+B 实验执行设计
 ├── 09_phase_ab_execution_plan.md      # [legacy] Phase A+B ShapeNet 实施计划（6 Task）
 ├── 10_objaverse_migration_design.md   # Objaverse 迁移 + 双实验设计
-├── 11_objaverse_experiment_plan.md    # Objaverse 双实验实施计划（12 Task）
+├── 11_objaverse_experiment_plan.md    # Objaverse 双实验实施计划（12 Tasks）
+├── 12_codebook_collapse_diagnosis.md  # Codebook Collapse 诊断分析与修复建议
 ├── material/                      # 10 篇核心论文的分析摘要
 └── paper/                         # 300+ 篇论文的 markdown 原文
 
@@ -104,8 +105,65 @@ results/                           # 验证产出（commit 到 repo）
 ## 验证要求 — 重要
 
 - **真实数据验证**：每个 Task 完成后，必须用真实数据（如 ShapeNet mesh）实际运行，产生用户可亲眼查看的结果
-- **可见产出**：结果需通过以下方式呈现：markdown 文档讲解 + 完整 log 日志 + matplotlib 可视化图 + mesh obj 文件等
+- **可见产出**：结果需通过以下方式呼现：markdown 文档讲解 + 完整 log 日志 + matplotlib 可视化图 + mesh obj 文件等
 - **Mesh 预览图**：每次用真实 mesh 测试时，必须渲染该 mesh 的预览图像（多角度或单张），保存为 PNG，让用户直观看到模型外观
 - **结果保存**：所有验证产出保存到 `results/` 文件夹
 - **内存安全**：使用真实数据测试时，只下载/使用少量数据（如 10 个 mesh），避免 OOM 崩溃
 - 单元测试仍需通过，但不能作为唯一验证手段
+
+## 硬件环境
+
+| 资源 | 规格 |
+|------|------|
+| GPU | RTX 4090 × 1 |
+| vCPU | 16 核 |
+| Memory | 62 GB |
+| Container Disk | 80 GB |
+
+## 资源管理规范 — 重要
+
+### 实验前强制检查
+
+每次开始大规模实验（下载数据、批量预处理、训练）之前，**必须先执行以下检查**，任一项不满足则暂停并报告：
+
+```bash
+# 磁盘检查（可用空间需 > 预估用量的 1.5 倍）
+df -h /
+
+# 内存检查
+free -h
+
+# GPU 显存检查
+nvidia-smi
+```
+
+**磁盘红线**：Container disk 总量 80 GB，任何时候 `data/` 目录不得超过 **50 GB**，`results/` 不得超过 **5 GB**，留 25 GB 给系统和代码。
+
+**内存红线**：62 GB 总内存，单个进程不得超过 **40 GB**，留余量给系统和其他进程。
+
+### 内存使用规范
+
+- **禁止**一次性将整个数据集加载进内存；必须用 DataLoader / generator 分批处理
+- 训练循环中，每个 epoch 结束后执行：
+  ```python
+  torch.cuda.empty_cache()
+  ```
+- 大型中间变量（如全量 embeddings）用完后立即 `del` 并调用 `gc.collect()`
+- 预处理脚本处理 GLB 文件时，**逐文件**加载，不得批量持有超过 **100 个** mesh 对象
+
+### 磁盘使用规范
+
+- **只保留最新 3 个 checkpoint**，旧的立即删除：
+  ```bash
+  ls -t data/checkpoints/*/checkpoint_epoch*.pt | tail -n +4 | xargs rm -f
+  ```
+
+### 崩溃预防
+
+- 训练脚本必须支持 `--resume`，确保 OOM 后可以从上一个 checkpoint 继续，**不得从头重跑**
+- 预处理脚本必须支持断点续跑（跳过已处理的文件），检测方式：
+  ```python
+  if output_path.exists():
+      continue  # 已处理，跳过
+  ```
+- 遇到 OOM 错误时，**优先降低 `--batch_size`**，不要直接加内存
