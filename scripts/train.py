@@ -25,6 +25,8 @@ def main():
                         help="LR warmup epochs (default 5)")
     parser.add_argument("--dead_code_interval", type=int, default=10,
                         help="Dead code revival interval in epochs (0 to disable)")
+    parser.add_argument("--encoder_warmup_epochs", type=int, default=10,
+                        help="Epochs of encoder-only training before K-means init + VQ (default 10)")
     parser.add_argument("--checkpoint_dir", type=str, default="data/checkpoints")
     parser.add_argument("--resume", type=str, default=None,
                         help="Resume from checkpoint (loads model + optimizer state)")
@@ -77,6 +79,7 @@ def main():
         device=device,
         warmup_epochs=args.warmup_epochs,
         dead_code_interval=args.dead_code_interval,
+        encoder_warmup_epochs=args.encoder_warmup_epochs,
     )
     trainer.train()
 

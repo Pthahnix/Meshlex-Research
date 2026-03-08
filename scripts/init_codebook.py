@@ -74,9 +74,23 @@ def main():
         noise = np.random.randn(extra, centers.shape[1]) * 0.01 + centers[np.random.randint(0, effective_k, extra)]
         centers = np.concatenate([centers, noise], axis=0)
 
-    # Initialize codebook
+    # Initialize codebook: set C = W^T(centroids) so CW ≈ centroids
     with torch.no_grad():
-        model.codebook.codebook.weight.copy_(torch.tensor(centers, dtype=torch.float32))
+        centroids_tensor = torch.tensor(centers, dtype=torch.float32).to(device)
+        model.codebook.init_from_z(centroids_tensor)
+
+    # Verify alignment
+    with torch.no_grad():
+        cw = model.codebook.get_quant_codebook()
+        alignment_error = (cw.cpu() - torch.tensor(centers, dtype=torch.float32)).norm(dim=1).mean()
+        print(f"CW-centroid alignment error (L2): {alignment_error:.4f}")
+
+    # Verify utilization with encoder outputs
+    with torch.no_grad():
+        sample_z = torch.tensor(all_embeddings[:1000], dtype=torch.float32).to(device)
+        _, sample_idx = model.codebook(sample_z)
+        util = sample_idx.unique().numel() / args.codebook_size
+        print(f"Post-init utilization (sample 1000): {util:.1%}")
 
     # Save
     ckpt["model_state_dict"] = model.state_dict()

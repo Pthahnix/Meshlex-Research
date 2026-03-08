@@ -119,6 +119,20 @@ class SimVQCodebook(nn.Module):
         """Return CW — the effective codebook in encoder output space."""
         return self.linear(self.codebook.weight)
 
+    @torch.no_grad()
+    def init_from_z(self, centroids: torch.Tensor):
+        """Initialize C so that CW ≈ centroids.
+
+        Since CW = W(C) and W is near-orthogonal, set C = W^T(centroids).
+        This ensures the effective codebook CW starts aligned with encoder outputs.
+
+        Args:
+            centroids: (K, dim) target positions in encoder output space (e.g., K-means centers)
+        """
+        # C = W^T(centroids) so that CW = W(W^T(centroids)) ≈ centroids
+        W = self.linear.weight  # (dim, dim)
+        self.codebook.weight.data.copy_(centroids @ W)  # (K, dim) @ (dim, dim) = (K, dim)
+
 
 class PatchDecoder(nn.Module):
     """MLP decoder: codebook embedding → per-vertex coordinates.
