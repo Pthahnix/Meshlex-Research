@@ -10,7 +10,7 @@ from src.trainer import Trainer
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--train_dirs", nargs="+", required=True,
-                        help="Patch directories for training (e.g., data/patches/chair data/patches/table)")
+                        help="Patch directories for training")
     parser.add_argument("--val_dirs", nargs="+", default=None,
                         help="Patch directories for validation")
     parser.add_argument("--codebook_size", type=int, default=4096)
@@ -19,7 +19,12 @@ def main():
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--lr", type=float, default=1e-4)
-    parser.add_argument("--vq_start_epoch", type=int, default=20)
+    parser.add_argument("--lambda_commit", type=float, default=1.0)
+    parser.add_argument("--lambda_embed", type=float, default=1.0)
+    parser.add_argument("--warmup_epochs", type=int, default=5,
+                        help="LR warmup epochs (default 5)")
+    parser.add_argument("--dead_code_interval", type=int, default=10,
+                        help="Dead code revival interval in epochs (0 to disable)")
     parser.add_argument("--checkpoint_dir", type=str, default="data/checkpoints")
     parser.add_argument("--resume", type=str, default=None,
                         help="Resume from checkpoint (loads model + optimizer state)")
@@ -45,6 +50,8 @@ def main():
         codebook_size=args.codebook_size,
         embed_dim=args.embed_dim,
         hidden_dim=args.hidden_dim,
+        lambda_commit=args.lambda_commit,
+        lambda_embed=args.lambda_embed,
     )
 
     # Resume from checkpoint if provided
@@ -54,7 +61,9 @@ def main():
         print(f"Resumed model from {args.resume} (epoch {ckpt.get('epoch', '?')})")
 
     n_params = sum(p.numel() for p in model.parameters())
-    print(f"Model parameters: {n_params:,}")
+    n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Model parameters: {n_params:,} total, {n_trainable:,} trainable")
+    print(f"Codebook C frozen: {not model.codebook.codebook.weight.requires_grad}")
 
     # Train
     trainer = Trainer(
@@ -66,7 +75,8 @@ def main():
         epochs=args.epochs,
         checkpoint_dir=args.checkpoint_dir,
         device=device,
-        vq_start_epoch=args.vq_start_epoch,
+        warmup_epochs=args.warmup_epochs,
+        dead_code_interval=args.dead_code_interval,
     )
     trainer.train()
 
