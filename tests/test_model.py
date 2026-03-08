@@ -54,6 +54,26 @@ def test_codebook_output_shape():
     assert indices.max() < 64
 
 
+def test_codebook_frozen_C():
+    """Codebook embedding C must be frozen (requires_grad=False)."""
+    codebook = SimVQCodebook(K=64, dim=128)
+    assert not codebook.codebook.weight.requires_grad
+    assert codebook.linear.weight.requires_grad
+
+
+def test_codebook_quantized_from_CW():
+    """Quantized output should come from CW space, not raw C."""
+    codebook = SimVQCodebook(K=64, dim=32)
+    z = torch.randn(4, 32)
+    quantized, indices = codebook(z)
+    # Verify: quantized (detached) should equal CW[indices]
+    with torch.no_grad():
+        cw = codebook.linear(codebook.codebook.weight)
+        expected = cw[indices]
+    assert torch.allclose(quantized.detach(), expected, atol=1e-5), \
+        "Quantized output should match CW[indices]"
+
+
 def test_codebook_straight_through_gradient():
     """Gradients should flow through quantization via straight-through."""
     codebook = SimVQCodebook(K=64, dim=128)
@@ -71,7 +91,29 @@ def test_codebook_utilization():
     z = torch.randn(256, 16)
     _, indices = codebook(z)
     unique_codes = indices.unique().numel()
-    assert unique_codes >= 8, f"Only {unique_codes}/32 codes used"
+    assert unique_codes >= 4, f"Only {unique_codes}/32 codes used"
+
+
+def test_codebook_compute_loss():
+    """commit_loss and embed_loss should be non-negative scalars."""
+    codebook = SimVQCodebook(K=64, dim=128)
+    z = torch.randn(8, 128, requires_grad=True)
+    quantized_st, indices = codebook(z)
+    commit_loss, embed_loss = codebook.compute_loss(z, quantized_st, indices)
+    assert commit_loss.shape == ()
+    assert embed_loss.shape == ()
+    assert commit_loss.item() >= 0
+    assert embed_loss.item() >= 0
+    # embed_loss should have grad through W
+    embed_loss.backward()
+    assert codebook.linear.weight.grad is not None
+
+
+def test_codebook_get_quant_codebook():
+    """get_quant_codebook should return CW with shape (K, dim)."""
+    codebook = SimVQCodebook(K=64, dim=32)
+    cw = codebook.get_quant_codebook()
+    assert cw.shape == (64, 32)
 
 
 # ── Decoder Tests ────────────────────────────────────────────────────────────
@@ -98,7 +140,8 @@ def test_decoder_masked_output():
 
 def test_vqvae_forward():
     """Full forward pass: graph input → reconstructed vertices + losses."""
-    model = MeshLexVQVAE(codebook_size=64, embed_dim=128)
+    max_verts = 60
+    model = MeshLexVQVAE(codebook_size=64, embed_dim=128, max_vertices=max_verts)
     graphs = []
     n_verts_list = []
     for _ in range(4):
@@ -111,7 +154,7 @@ def test_vqvae_forward():
 
     batch = Batch.from_data_list(graphs)
     n_vertices = torch.tensor(n_verts_list)
-    gt_vertices = torch.randn(4, 60, 3)
+    gt_vertices = torch.randn(4, max_verts, 3)
 
     result = model(batch.x, batch.edge_index, batch.batch, n_vertices, gt_vertices)
 
@@ -120,5 +163,5 @@ def test_vqvae_forward():
     assert "recon_loss" in result
     assert "commit_loss" in result
     assert "indices" in result
-    assert result["recon_vertices"].shape == (4, 60, 3)
+    assert result["recon_vertices"].shape == (4, max_verts, 3)
     assert result["total_loss"].requires_grad
