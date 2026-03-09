@@ -222,16 +222,74 @@ python scripts/visualize.py \
 
 选表现好的实验组，训练 200 epochs：
 
+### A-stage 全量训练（已完成）
+
+5-Category:
 ```bash
-python scripts/train.py \
-    --train_dirs <best_experiment_train_dirs> \
-    --val_dirs <best_experiment_val_dirs> \
-    --resume <best_experiment_kmeans_checkpoint> \
-    --epochs 200 \
-    --batch_size 256 \
-    --lr 1e-4 \
-    --vq_start_epoch 0 \
-    --checkpoint_dir data/checkpoints/<experiment>_full
+PYTHONPATH=. python scripts/train.py \
+    --train_dirs data/patches/5cat/chair_train data/patches/5cat/table_train data/patches/5cat/airplane_train \
+    --val_dirs data/patches/5cat/chair_test data/patches/5cat/table_test data/patches/5cat/airplane_test \
+    --epochs 200 --batch_size 256 --lr 1e-4 \
+    --warmup_epochs 5 --dead_code_interval 10 \
+    --checkpoint_dir data/checkpoints/5cat_v2
+```
+
+LVIS-Wide:
+```bash
+PYTHONPATH=. python scripts/train.py \
+    --train_dirs data/patches/lvis_wide/seen_train \
+    --val_dirs data/patches/lvis_wide/seen_test \
+    --epochs 200 --batch_size 256 --lr 1e-4 \
+    --warmup_epochs 5 --dead_code_interval 10 --encoder_warmup_epochs 10 \
+    --checkpoint_dir data/checkpoints/lvis_wide_A
+```
+
+### B-stage 训练（在 A-stage checkpoint 上继续）
+
+5-Category (已完成):
+```bash
+PYTHONPATH=. python scripts/train.py \
+    --train_dirs data/patches/5cat/chair_train data/patches/5cat/table_train data/patches/5cat/airplane_train \
+    --val_dirs data/patches/5cat/chair_test data/patches/5cat/table_test data/patches/5cat/airplane_test \
+    --epochs 200 --batch_size 256 --lr 1e-4 \
+    --warmup_epochs 5 --dead_code_interval 10 --encoder_warmup_epochs 0 \
+    --num_kv_tokens 4 \
+    --resume data/checkpoints/5cat_v2/checkpoint_final.pt \
+    --checkpoint_dir data/checkpoints/5cat_B
+```
+
+LVIS-Wide (待执行):
+```bash
+PYTHONPATH=. python scripts/train.py \
+    --train_dirs data/patches/lvis_wide/seen_train \
+    --val_dirs data/patches/lvis_wide/seen_test \
+    --epochs 200 --batch_size 256 --lr 1e-4 \
+    --warmup_epochs 5 --dead_code_interval 10 --encoder_warmup_epochs 0 \
+    --num_kv_tokens 4 \
+    --resume data/checkpoints/lvis_wide_A/checkpoint_final.pt \
+    --checkpoint_dir data/checkpoints/lvis_wide_B
+```
+
+**注意**: 不要用 `--use_rotation`，rotation trick 与 SimVQ 不兼容（会导致 collapse）。
+
+### 评估
+
+```bash
+PYTHONPATH=. python scripts/evaluate.py \
+    --checkpoint data/checkpoints/<experiment>/checkpoint_final.pt \
+    --same_cat_dirs <same_category_test_dirs> \
+    --cross_cat_dirs <cross_category_test_dirs> \
+    --output results/<experiment>/eval_results.json
+```
+
+### 可视化
+
+```bash
+PYTHONPATH=. python scripts/visualize.py \
+    --checkpoint data/checkpoints/<experiment>/checkpoint_final.pt \
+    --history data/checkpoints/<experiment>/training_history.json \
+    --patch_dirs <train_patch_dirs> \
+    --output_dir results/<experiment>
 ```
 
 ---

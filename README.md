@@ -19,24 +19,25 @@ MeshLex takes a different approach: instead of generating meshes face-by-face, w
 - **Day 1 (2026-03-06)**: Project inception, gap analysis, idea generation, experiment design
 - **Day 2 (2026-03-07)**: Full codebase implementation (14 tasks), unit tests, initial experiment
 - **Day 3 (2026-03-08)**: Diagnosed codebook collapse, fixed SimVQ implementation, Exp1 v2 (A-stage 5cat) training + eval completed — **STRONG GO**. B-stage code implemented (rotation trick + multi-token KV decoder)
-- **Day 4 (2026-03-09)**: Exp3 (B-stage 5cat) completed — **STRONG GO** (CD -6.2%). Discovered rotation trick incompatible with SimVQ. LVIS-Wide data prepared (844 categories, 71K patches). Exp2 (A-stage LVIS-Wide) training in progress
+- **Day 4 (2026-03-09)**: Exp3 (B-stage 5cat) completed — **STRONG GO** (CD -6.2%). Discovered rotation trick incompatible with SimVQ. LVIS-Wide data prepared (844 categories, 71K patches). Exp2 (A-stage LVIS-Wide) completed — **STRONG GO** (ratio 1.07x, util 67.8%). Key finding: more categories = better generalization
 
 ## Current Status
 
-**Phase: 4-experiment matrix (A/B stage × 5cat/LVIS-Wide). 2/4 completed, 1 training.**
+**Phase: 4-experiment matrix (A/B stage × 5cat/LVIS-Wide). 3/4 completed, all STRONG GO.**
 
 | # | Experiment | Status | Result |
 |---|-----------|--------|--------|
 | 1 | A-stage × 5-Category | **Done** | STRONG GO (ratio 1.14x, util 46%) |
+| 2 | A-stage × LVIS-Wide | **Done** | **STRONG GO (ratio 1.07x, util 67.8%)** |
 | 3 | B-stage × 5-Category | **Done** | STRONG GO (ratio 1.18x, CD -6.2%, util 99%) |
-| 2 | A-stage × LVIS-Wide | **Training** (epoch 109/200) | util 75%, recon 0.222 |
 | 4 | B-stage × LVIS-Wide | Pending | — |
 
 Key findings so far:
 - SimVQ collapse fix successful: utilization 0.46% → 99%+ (217x improvement)
 - B-stage multi-token KV decoder effective: reconstruction CD reduced 6.2%
 - Rotation trick incompatible with SimVQ (causes rapid collapse)
-- Cross-category generalization validated: CD ratio 1.14-1.18x (< 1.2 threshold)
+- Cross-category generalization validated: CD ratio 1.07-1.18x (< 1.2 threshold)
+- **More categories = better generalization**: LVIS-Wide (844 cat) outperforms 5-cat in all metrics
 
 ## Pipeline
 
@@ -84,7 +85,10 @@ results/                           # Validation outputs (committed)
 ├── task8_10_validation/           # VQ-VAE + Training
 ├── task12_validation/             # Visualization
 ├── task13_validation/             # K-means init
-└── exp1_v2_collapse_fix/          # Exp1 v2 training reports + model analysis
+├── exp1_v2_collapse_fix/          # Exp1 v2 training reports + model analysis
+├── exp1_A_5cat/                   # Exp1 A-stage 5cat eval + report
+├── exp2_A_lvis_wide/              # Exp2 A-stage LVIS-Wide eval + report
+└── exp3_B_5cat/                   # Exp3 B-stage 5cat eval + report
 
 .context/                          # Research documents (chronological)
 ├── 00-09_*.md                     # Research evolution documents

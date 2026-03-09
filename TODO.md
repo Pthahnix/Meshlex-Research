@@ -1,16 +1,16 @@
 # MeshLex — Session Handoff TODO
 
-> **最后更新**: 2026-03-09 06:00
-> **当前状态**: Exp2 LVIS-Wide A-stage 训练中（~9h remaining）
+> **最后更新**: 2026-03-09 16:15
+> **当前状态**: Exp2 完成 (STRONG GO)，待执行 Exp4 B-stage LVIS-Wide
 
 ## 实验进度总览
 
 | # | 实验 | 状态 | 结果 |
 |---|------|------|------|
 | 1 | A-stage × 5-Category | **完成** | STRONG GO (ratio 1.14x, util 46%) |
-| 2 | A-stage × LVIS-Wide | **训练中** (epoch 14/200, ~9h left) | util 76% at epoch 14 |
+| 2 | A-stage × LVIS-Wide | **完成** | **STRONG GO (ratio 1.07x, util 67.8%)** |
 | 3 | B-stage × 5-Category | **完成** | STRONG GO (ratio 1.18x, CD -6.2%, util 99%) |
-| 4 | B-stage × LVIS-Wide | 待执行（Exp2 完成后） | — |
+| 4 | B-stage × LVIS-Wide | **待执行** | — |
 
 ## 已完成
 
@@ -19,6 +19,15 @@
 - 结果: results/exp1_A_5cat/
 - CD Ratio: 1.14x, Utilization: 46% (eval) / 99.7% (train)
 - Commit: edb86c4
+
+### Exp2: A-stage × LVIS-Wide — STRONG GO
+- Checkpoint: data/checkpoints/lvis_wide_A/checkpoint_final.pt
+- 结果: results/exp2_A_lvis_wide/
+- CD Ratio: **1.07x**, Same-cat CD: 217.0, Cross-cat CD: 232.3
+- Eval Util: **67.8%** (2779/4096), Train Util: 74.7%
+- 训练 200 epochs, ~10h (186s/epoch)
+- **关键发现**: 更多类别训练 = 更好泛化（ratio 1.07x vs 5cat 1.14x, util 67.8% vs 46%）
+- Commit: eba4b7d
 
 ### Exp3: B-stage × 5cat — STRONG GO
 - Checkpoint: data/checkpoints/5cat_B/checkpoint_final.pt
@@ -40,42 +49,19 @@
 - Category holdout split: 794 seen + 50 unseen categories
 - seen_train: 53,424 patches, seen_test: 13,315 patches, unseen: 4,167 patches
 
-## 当前进行中
+## 下一步：Exp4 B-stage LVIS-Wide
 
-### Exp2: LVIS-Wide A-stage 训练
-- 命令: `PYTHONPATH=. python scripts/train.py --train_dirs data/patches/lvis_wide/seen_train --val_dirs data/patches/lvis_wide/seen_test --epochs 200 --batch_size 256 --lr 1e-4 --warmup_epochs 5 --dead_code_interval 10 --encoder_warmup_epochs 10 --checkpoint_dir data/checkpoints/lvis_wide_A`
-- 每 epoch ~185s, 预计总 ~10h
-- K-means init 完成，post-init util 15.4%, epoch 14 util 76.2%
-
-## 如果 session 中断，恢复步骤
-
-### 1. 检查 Exp2 训练是否完成
+### 1. 资源检查
 ```bash
-ls data/checkpoints/lvis_wide_A/checkpoint_final.pt
-```
-如果存在 → 跑评估；如果不存在 → resume 训练
-
-### 2. Resume Exp2 训练
-```bash
-PYTHONPATH=. python scripts/train.py \
-  --train_dirs data/patches/lvis_wide/seen_train \
-  --val_dirs data/patches/lvis_wide/seen_test \
-  --epochs 200 --batch_size 256 --lr 1e-4 \
-  --warmup_epochs 5 --dead_code_interval 10 --encoder_warmup_epochs 0 \
-  --resume data/checkpoints/lvis_wide_A/checkpoint_epoch<LATEST>.pt \
-  --checkpoint_dir data/checkpoints/lvis_wide_A
+df -h / && free -h && nvidia-smi
 ```
 
-### 3. 评估 Exp2
+### 2. 清理旧 checkpoint（只保留最新 3 个）
 ```bash
-PYTHONPATH=. python scripts/evaluate.py \
-  --checkpoint data/checkpoints/lvis_wide_A/checkpoint_final.pt \
-  --same_cat_dirs data/patches/lvis_wide/seen_test \
-  --cross_cat_dirs data/patches/lvis_wide/unseen \
-  --output results/exp2_A_lvis_wide/eval_results.json
+ls -t data/checkpoints/lvis_wide_A/checkpoint_epoch*.pt | tail -n +4 | xargs rm -f
 ```
 
-### 4. Exp4: B-stage LVIS-Wide
+### 3. 启动 Exp4 训练
 ```bash
 PYTHONPATH=. python scripts/train.py \
   --train_dirs data/patches/lvis_wide/seen_train \
@@ -88,9 +74,39 @@ PYTHONPATH=. python scripts/train.py \
 ```
 **注意**: 不要用 `--use_rotation`，rotation trick 与 SimVQ 不兼容
 
+### 4. 监控训练（每 30min 写进度报告到 results/exp4_B_lvis_wide/）
+- 每 epoch ~186s, 预计总 ~10h
+- 监控重点: utilization 是否保持 >30%, recon loss 是否下降
+
+### 5. 评估 Exp4
+```bash
+PYTHONPATH=. python scripts/evaluate.py \
+  --checkpoint data/checkpoints/lvis_wide_B/checkpoint_final.pt \
+  --same_cat_dirs data/patches/lvis_wide/seen_test \
+  --cross_cat_dirs data/patches/lvis_wide/unseen \
+  --output results/exp4_B_lvis_wide/eval_results.json
+```
+
+### 6. 可视化 Exp4
+```bash
+PYTHONPATH=. python scripts/visualize.py \
+  --checkpoint data/checkpoints/lvis_wide_B/checkpoint_final.pt \
+  --history data/checkpoints/lvis_wide_B/training_history.json \
+  --patch_dirs data/patches/lvis_wide/seen_train \
+  --output_dir results/exp4_B_lvis_wide
+```
+
+### 7. 最终 4 实验综合评估
+对比所有 4 组实验结果，写 final report。
+
+### 8. 更新文档
+更新 TODO.md, CLAUDE.md, README.md, RUN_GUIDE.md 反映最终结果。
+
 ## 重要文件
 - B-stage 设计: context/19_codebook_collapse_fix_design.md 第四节
 - 实验计划: context/11_objaverse_experiment_plan.md
 - A-stage 5cat checkpoint: data/checkpoints/5cat_v2/checkpoint_final.pt
 - B-stage 5cat checkpoint: data/checkpoints/5cat_B/checkpoint_final.pt
+- A-stage LVIS-Wide checkpoint: data/checkpoints/lvis_wide_A/checkpoint_final.pt
+- Exp2 报告: results/exp2_A_lvis_wide/report.md
 - Exp3 报告: results/exp3_B_5cat/report.md
