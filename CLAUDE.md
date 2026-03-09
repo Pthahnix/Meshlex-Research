@@ -81,21 +81,23 @@ results/                           # 验证产出（commit 到 repo）
 
 ## Current Status
 
-**当前阶段**：Exp1 v2 (Collapse Fix) 训练完成。待执行评估 + Go/No-Go 决策。
+**当前阶段**：Exp2 (LVIS-Wide A-stage) 训练中。Exp1/3 (5-Category A/B) 均 STRONG GO。
 
-- 代码实现：全部完成（src/ + scripts/ + tests/，17 tests passing）
+- 代码实现：全部完成（src/ + scripts/ + tests/，21 tests passing）
 - 数据源：Objaverse-LVIS（46K objects, 1156 categories，无需审批）
-- 实验设计：双实验（`context/10_objaverse_migration_design.md`）
-  - 实验 1：5-Category（chair/table/airplane 训练，car/lamp 跨类别测试）— **训练完成**
-  - 实验 2：LVIS-Wide（500+ 类别广覆盖 universality 验证）— 待 Go 后执行
-- Collapse Fix：诊断并修复了 SimVQ 实现的 3 个 critical bug（`context/12_codebook_collapse_diagnosis.md`、`context/20_collapse_fix_implementation_plan.md`）
-- **Exp1 v2 训练结果**：
-  - Codebook Utilization: **99.7%**（vs v1 的 0.46%，提升 217x）
-  - Recon Loss: **0.228**（vs v1 的 0.326，改善 30%）
-  - 模型: 1.06M params, ~1 GB GPU memory, RTX 4090 训练 ~2.5h
-  - Checkpoint: `data/checkpoints/5cat_v2/checkpoint_final.pt`
-  - 详细报告: `results/exp1_v2_collapse_fix/`
-- **下一步**: Task 11 — 运行评估脚本（same-cat/cross-cat CD + Go/No-Go）→ 详见 `TODO.md`
+- 实验设计：四实验矩阵（A/B stage × 5cat/LVIS-Wide）
+  - **Exp1**: A-stage × 5cat — **STRONG GO** (ratio 1.14x, util 46%, recon 0.228)
+  - **Exp3**: B-stage × 5cat — **STRONG GO** (ratio 1.18x, util 47%, recon 0.209, CD -6.2%)
+  - **Exp2**: A-stage × LVIS-Wide — **训练中**（844 categories, 71K patches）
+  - **Exp4**: B-stage × LVIS-Wide — 待 Exp2 完成后执行
+- **关键发现**：
+  - SimVQ collapse fix 成功（util 0.46% → 99%+）
+  - B-stage multi-token KV decoder 有效（CD -6.2%），但 rotation trick 与 SimVQ 不兼容
+  - 跨阶段 resume（A→B stage）需 strict=False 加载
+- Checkpoints:
+  - A-stage 5cat: `data/checkpoints/5cat_v2/checkpoint_final.pt`
+  - B-stage 5cat: `data/checkpoints/5cat_B/checkpoint_final.pt`
+- **下一步**: Exp2 训练完成后评估 → Exp4 B-stage → 详见 `TODO.md`
 
 ## Conventions
 
