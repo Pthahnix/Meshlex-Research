@@ -124,6 +124,180 @@ python -m pytest tests/ -v
 
 CCF-A conferences: CVPR / NeurIPS / ICCV
 
+---
+
+## Technical Deep Dive
+
+### Research Question
+
+MeshLex asks: does 3D mesh local topology behave like natural language — with a finite, universal "vocabulary" that transfers across all object categories?
+
+Every 3D object is cut into small **patches** (local mesh fragments of ~20 triangles each). Intuitively, the corner of a table leg, the curve of a car door, the flat surface of a chair back — these local shapes repeat across different objects. MeshLex aims to distill these recurring structures into **4096 prototype entries (a codebook)**, then verify whether this vocabulary generalizes to object categories never seen during training.
+
+```mermaid
+flowchart TB
+    subgraph QUESTION["Core Research Question"]
+        Q["Does 3D mesh local topology have\na finite, universal vocabulary\nacross all object categories?\n(Can 4096 prototypes cover all local structures?)"]
+    end
+
+    subgraph PIPELINE["Experimental Pipeline"]
+        direction LR
+        P1["Segment Mesh\n-> Patches"]
+        P2["Train\nVQ-VAE"]
+        P3["Test\nCross-category Reconstruction"]
+        P1 --> P2 --> P3
+    end
+
+    subgraph METRIC["Key Metrics"]
+        direction LR
+        M1["Codebook Utilization\nFraction of 4096 codes activated\nTarget: > 30%"]
+        M2["CD Ratio\ncross-cat CD / same-cat CD\nTarget: < 1.2\n(1.0 = perfect generalization)"]
+    end
+
+    subgraph RESULTS["Three Experiments"]
+        direction LR
+        R1["Exp1 A  5 categories\nratio 1.14x  util 46%"]
+        R2["Exp3 B  5 categories\nratio 1.18x  util 47%"]
+        R3["Exp2 A  844 categories\nratio 1.07x  util 67.8%"]
+    end
+
+    subgraph FINDING["Key Findings"]
+        direction LR
+        F1["More scale = better generalization\n5 cat -> 844 cat: ratio 1.14 -> 1.07"]
+        F2["seen/unseen util nearly identical\nCodebook learns category-agnostic geometric primitives"]
+    end
+
+    QUESTION --> PIPELINE --> METRIC --> RESULTS --> FINDING
+```
+
+### Model Architecture
+
+The full model is a VQ-VAE with three modules in series:
+
+- **Module 1 — PatchEncoder**: A GNN encoder that compresses one patch (a small graph) into a 128-dimensional continuous vector **z**
+- **Module 2 — SimVQ Codebook**: Discrete quantization that maps z to the nearest "word" in the dictionary, outputting an integer **index** (0–4095) and a quantized vector **z\_q**
+- **Module 3 — PatchDecoder**: A cross-attention decoder that reconstructs per-vertex xyz coordinates from z\_q
+
+```mermaid
+flowchart LR
+    subgraph INPUT["Input: One Mesh Patch"]
+        MESH["3D Triangle Mesh Patch\n~20 triangular faces\n15-dim features per face\n(normals / coords / dihedral angles)"]
+    end
+
+    subgraph ENCODER["GNN Encoder\n(PatchEncoder)"]
+        S1["SAGEConv x4\n+ LayerNorm + GELU"]
+        S2["Global Mean Pooling"]
+        S1 --> S2
+    end
+
+    subgraph VQ["SimVQ Codebook\nK=4096 entries"]
+        CW["CW = W(C)\nEffective codebook K x 128"]
+        NN["Nearest-neighbor search\nargmin dist(z, CW)"]
+        STE["Straight-Through\nGradient Estimator"]
+        CW --> NN --> STE
+    end
+
+    subgraph DECODER["Cross-Attn Decoder\n(PatchDecoder)"]
+        VQ2["128 learnable\nVertex Queries"]
+        CA["Cross-Attention\n(4 heads)"]
+        MLP2["MLP 3-layer\n-> xyz coords"]
+        VQ2 --> CA --> MLP2
+    end
+
+    subgraph OUTPUT["Output"]
+        RECON["Reconstructed vertex coords\n(up to 128 vertices)"]
+        IDX["Codebook Index\nan integer 0~4095\n= the patch's 'word'"]
+    end
+
+    subgraph LOSS["Training Losses"]
+        direction TB
+        L1["Chamfer Distance\nReconstruction loss"]
+        L2["Commitment Loss\n||z - sg(CW[i])||^2"]
+        L3["Embedding Loss\n||sg(z) - CW[i]||^2"]
+    end
+
+    MESH -->|"Face adjacency graph\nedge_index"| ENCODER
+    ENCODER -->|"z in R128\npatch embedding"| VQ
+    VQ -->|"z_q in R128\nquantized embedding"| DECODER
+    VQ --> IDX
+    DECODER --> RECON
+    RECON --> L1
+    VQ --> L2
+    VQ --> L3
+```
+
+### SimVQ: Why Codebook Collapse Doesn't Happen
+
+This is the most critical technical contribution of the work.
+
+**The problem with vanilla VQ-VAE (Codebook Collapse)**: In standard VQ, each code only receives a gradient update when it is selected as the nearest neighbor. Codes that are never selected in the cold-start phase receive no gradient, never update, and eventually die. Only a handful of codes survive — this is codebook collapse.
+
+**SimVQ's solution — Frozen C + Learnable W**: The codebook is split into a frozen base matrix **C** and a learnable linear transform **W**. The effective codebook is **CW = W(C)**. Since all 4096 entries share the same W, any update to W simultaneously shifts *every* entry in CW — even codes that were never selected still move with each gradient step.
+
+**Intuition**: Vanilla VQ is like 4096 independent actors where only those who perform get to practice. SimVQ gives all actors a shared training system (W) — even those waiting offstage keep improving.
+
+```mermaid
+flowchart TD
+    subgraph SIMVQ["SimVQ Codebook Internals (ICCV 2025)"]
+        C["C: Base codebook (K=4096, dim=128)\nFrozen \u2014 no gradient flows through C\nrequires_grad = False"]
+        W["W: Linear transform layer (128x128)\nThe only learnable parameter\nOrthogonal initialization"]
+        CW2["CW = W(C)  Effective codebook\nAll 4096 codes share the same W\nUpdating W = shifting all codes simultaneously"]
+        Z["z: Encoder output (128-dim)"]
+        DIST["Compute distances  dist(z, CW[k])  k=0..4095"]
+        IDX2["argmin -> index i\nFind nearest code"]
+        QZ["z_q = CW[i]\nQuantized result"]
+        STE2["Straight-Through gradient:\nForward = z_q\nBackward gradient = dL/dz (flows through z)"]
+
+        C --> CW2
+        W --> CW2
+        Z --> DIST
+        CW2 --> DIST
+        DIST --> IDX2
+        IDX2 --> QZ
+        Z --> STE2
+        QZ --> STE2
+    end
+
+    subgraph INIT["Initialization Strategies"]
+        direction LR
+        KM["K-means Initialization\nRun encoder on all data\nUse 4096 cluster centers\nto initialize CW before training"]
+        DCR["Dead Code Revival\nCheck every 10 epochs\nReplace inactive codes with\nperturbed encoder outputs"]
+    end
+
+    subgraph COMPARE["vs. Vanilla VQ"]
+        OLD["Vanilla VQ\nEach code updated independently\nNever selected = no gradient\n-> Collapse"]
+        NEW["SimVQ\nAll codes share W's gradient\nNo code is ever forgotten\n-> Stable utilization"]
+        OLD -.->|"SimVQ solves"| NEW
+    end
+```
+
+### Evaluation Metrics
+
+**Codebook Utilization**: The fraction of the 4096 codebook entries activated at least once on the evaluation set. Target: > 30%. Low utilization indicates codebook collapse — most "words" in the dictionary are wasted.
+
+**CD Ratio (Cross-category Chamfer Distance Ratio)**:
+
+$$\text{CD Ratio} = \frac{\text{Cross-category Chamfer Distance}}{\text{Same-category Chamfer Distance}}$$
+
+- **Numerator**: reconstruction error on patches from **unseen** categories (50 categories never seen during training)
+- **Denominator**: reconstruction error on patches from **seen** categories
+- The closer to 1.0, the better the vocabulary generalizes to unseen categories
+- Target: < 1.2 (at most 20% worse than seen categories)
+
+### Experimental Results and Scaling Finding
+
+| Experiment | Scale | Stage | CD Ratio | Util (same) | Util (cross) | Decision |
+|------------|-------|-------|----------|-------------|--------------|----------|
+| Exp1 | 5 categories | A (single-token KV) | 1.14x | 46.0% | — | ✅ STRONG GO |
+| Exp3 | 5 categories | B (4-token KV) | 1.18x | 47.1% | 47.3% | ✅ STRONG GO |
+| **Exp2** | **844 categories** | **A** | **1.07x** | **67.8%** | **48.2%** | ✅ **STRONG GO** |
+
+Scaling from 5 to 844 categories causes CD ratio to **decrease** (1.14 → 1.07) and utilization to **increase** (46% → 67.8%). Counterintuitively, more diverse training data makes the vocabulary *better* at generalizing to unseen categories, not worse.
+
+A particularly notable result from Exp3: same-category eval utilization (47.1%) and cross-category eval utilization (47.3%) differ by only 0.2%. Unseen categories activate nearly the same number and distribution of codebook entries as seen categories — direct evidence that the learned vocabulary is genuinely category-agnostic.
+
+---
+
 ## License
 
 Apache-2.0
