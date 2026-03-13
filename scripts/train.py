@@ -66,6 +66,7 @@ def main():
     print(f"Model stage: {stage} (rotation={args.use_rotation}, kv_tokens={args.num_kv_tokens})")
 
     # Resume from checkpoint if provided
+    ckpt_data = None
     if args.resume:
         ckpt = torch.load(args.resume, map_location=device, weights_only=False)
         # Use strict=False for cross-stage resume (e.g., A-stage → B-stage adds kv_proj)
@@ -75,6 +76,10 @@ def main():
             print(f"  New parameters (randomly initialized): {missing}")
         if unexpected:
             print(f"  Ignored parameters: {unexpected}")
+        # Pass full checkpoint to Trainer for optimizer/scheduler/history restore
+        # Only do full restore for same-stage resume (no missing/unexpected keys)
+        if not missing and not unexpected:
+            ckpt_data = ckpt
 
     n_params = sum(p.numel() for p in model.parameters())
     n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -94,6 +99,7 @@ def main():
         warmup_epochs=args.warmup_epochs,
         dead_code_interval=args.dead_code_interval,
         encoder_warmup_epochs=args.encoder_warmup_epochs,
+        resume_checkpoint=ckpt_data,
     )
     trainer.train()
 

@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import Dataset
 from pathlib import Path
 
+from torch_geometric.data import Data as _PyGData
 from src.patch_segment import segment_mesh_to_patches
 
 
@@ -180,7 +181,7 @@ class PatchGraphDataset(Dataset):
         padded_verts = np.zeros((self.MAX_VERTICES, 3), dtype=np.float32)
         padded_verts[:n_verts] = local_verts
 
-        return _PatchData(
+        return PatchData(
             x=torch.tensor(face_feats, dtype=torch.float32),
             edge_index=torch.tensor(edge_index, dtype=torch.long),
             gt_vertices=torch.tensor(padded_verts, dtype=torch.float32),
@@ -189,16 +190,10 @@ class PatchGraphDataset(Dataset):
         )
 
 
-class _PatchData:
-    """Wrapper around PyG Data that prevents concatenation of gt_vertices."""
+class PatchData(_PyGData):
+    """PyG Data subclass that stacks gt_vertices instead of concatenating."""
 
-    def __new__(cls, **kwargs):
-        from torch_geometric.data import Data as PyGData
-
-        class PatchData(PyGData):
-            def __cat_dim__(self, key, value, *args, **kw):
-                if key in ("gt_vertices",):
-                    return None  # stack instead of cat
-                return super().__cat_dim__(key, value, *args, **kw)
-
-        return PatchData(**kwargs)
+    def __cat_dim__(self, key, value, *args, **kw):
+        if key in ("gt_vertices",):
+            return None  # stack instead of cat
+        return super().__cat_dim__(key, value, *args, **kw)

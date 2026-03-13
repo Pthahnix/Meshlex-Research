@@ -25,6 +25,7 @@ class Trainer:
         warmup_epochs: int = 5,
         dead_code_interval: int = 10,
         encoder_warmup_epochs: int = 10,
+        resume_checkpoint: dict = None,
     ):
         self.model = model.to(device)
         self.device = device
@@ -34,12 +35,13 @@ class Trainer:
         self.encoder_warmup_epochs = encoder_warmup_epochs
         self.checkpoint_dir = Path(checkpoint_dir)
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        self.start_epoch = 0
 
         self.train_loader = DataLoader(
-            train_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
+            train_dataset, batch_size=batch_size, shuffle=True, num_workers=8,
         )
         self.val_loader = (
-            DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+            DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=8)
             if val_dataset else None
         )
 
@@ -57,6 +59,19 @@ class Trainer:
             milestones=[warmup_epochs],
         )
         self.history = []
+
+        # Restore full training state from checkpoint
+        if resume_checkpoint is not None:
+            self.start_epoch = resume_checkpoint.get("epoch", -1) + 1
+            if "optimizer_state_dict" in resume_checkpoint:
+                self.optimizer.load_state_dict(resume_checkpoint["optimizer_state_dict"])
+            if "history" in resume_checkpoint:
+                self.history = resume_checkpoint["history"]
+            # Advance scheduler to match resumed epoch
+            for _ in range(self.start_epoch):
+                self.scheduler.step()
+            print(f"  Trainer resumed: starting from epoch {self.start_epoch}, "
+                  f"history has {len(self.history)} entries")
 
     def train_one_epoch(self, epoch: int):
         self.model.train()
@@ -231,11 +246,14 @@ class Trainer:
 
     def train(self):
         """Full training loop."""
-        if self.encoder_warmup_epochs > 0:
+        if self.start_epoch == 0 and self.encoder_warmup_epochs > 0:
             print(f"Encoder warmup: {self.encoder_warmup_epochs} epochs (recon only), "
                   f"then K-means init + full VQ training")
 
-        for epoch in range(self.epochs):
+        if self.start_epoch > 0:
+            print(f"Resuming training from epoch {self.start_epoch}/{self.epochs}")
+
+        for epoch in range(self.start_epoch, self.epochs):
             t0 = time.time()
             train_metrics = self.train_one_epoch(epoch)
             val_metrics = self.evaluate()
