@@ -13,6 +13,9 @@
 # Only the research documents (00-06) and material/ analysis are original work
 .context/paper/
 
+# Runtime logs
+logs/
+
 # Data (large files, can be regenerated)
 data/
 
