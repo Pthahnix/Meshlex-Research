@@ -1,6 +1,35 @@
 # MeshLex Research
 
+<div align="center">
+
 **MeshLex: Learning a Topology-aware Patch Vocabulary for Compositional Mesh Generation**
+
+<a href="https://huggingface.co/Pthahnix/Meshlex-Research"><img alt="Hugging Face"
+  src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Meshlex--Research-ffc107?color=ffc107&logoColor=white"/></a>
+<a href="https://github.com/Pthahnix/Meshlex-Research/blob/main/LICENSE"><img alt="License"
+  src="https://img.shields.io/badge/License-Apache_2.0-f5de53?&color=f5de53"/></a>
+
+</div>
+
+<hr>
+
+## Table of Contents
+
+1. [Motivation](#motivation)
+2. [Core Hypothesis](#core-hypothesis)
+3. [Current Status](#current-status)
+4. [Timeline](#timeline)
+5. [Pipeline](#pipeline)
+6. [Repository Structure](#repository-structure)
+7. [Key Differentiators](#key-differentiators)
+8. [Quick Start](#quick-start)
+9. [Technical Deep Dive](#technical-deep-dive)
+    - [Research Question](#research-question)
+    - [Model Architecture](#model-architecture)
+    - [SimVQ: Why Codebook Collapse Doesn't Happen](#simvq-why-codebook-collapse-doesnt-happen)
+    - [Evaluation Metrics](#evaluation-metrics)
+    - [Experimental Results and Scaling Finding](#experimental-results-and-scaling-finding)
+10. [License](#license)
 
 A research project exploring whether 3D triangle meshes possess a finite, reusable "vocabulary" of local topological patterns — analogous to how BPE tokens form a vocabulary for natural language.
 
@@ -13,15 +42,6 @@ MeshLex takes a different approach: instead of generating meshes face-by-face, w
 ## Core Hypothesis
 
 > Mesh local topology is low-entropy and universal across object categories. A finite codebook of ~4096 topology prototypes, combined with continuous deformation parameters, can reconstruct arbitrary meshes with high fidelity.
-
-## Timeline
-
-- **Day 1 (2026-03-06)**: Project inception, gap analysis, idea generation, experiment design
-- **Day 2 (2026-03-07)**: Full codebase implementation (14 tasks), unit tests, initial experiment
-- **Day 3 (2026-03-08)**: Diagnosed codebook collapse, fixed SimVQ implementation, Exp1 v2 (A-stage 5cat) training + eval completed — **STRONG GO**. B-stage code implemented (rotation trick + multi-token KV decoder)
-- **Day 4 (2026-03-09)**: Exp3 (B-stage 5cat) completed — **STRONG GO** (CD -6.2%). Discovered rotation trick incompatible with SimVQ. LVIS-Wide data prepared (844 categories, 71K patches). Exp2 (A-stage LVIS-Wide) completed — **STRONG GO** (ratio 1.07x, util 67.8%). Key finding: more categories = better generalization
-- **Day 5 (2026-03-13)**: Pod reset recovery — retrained Exp1/Exp3 from HF checkpoints, expanded LVIS-Wide dataset (1156 categories, 246K patches). Retrained Exp2 (A-stage LVIS-Wide) — **STRONG GO** (ratio 1.019x, util 95.3%). Trained Exp4 (B-stage LVIS-Wide) — **STRONG GO** (ratio 1.019x, util 94.9%). All 4 experiments completed
-- **Day 6 (2026-03-14)**: Final comparison report + visualizations generated. Full dataset + checkpoints backed up to HuggingFace. Documentation updated
 
 ## Current Status
 
@@ -41,6 +61,15 @@ Key findings:
 - Cross-category generalization validated: CD ratio 1.019-1.185x (all < 1.2 threshold)
 - **More categories = dramatically better generalization**: LVIS-Wide (1156 cat) ratio 1.019x vs 5-cat 1.145x, util 95% vs 46%
 - **Best result (Exp4)**: Same-cat CD 211.6, Cross-cat CD 215.8 — near-zero generalization gap
+
+## Timeline
+
+- **Day 1 (2026-03-06)**: Project inception, gap analysis, idea generation, experiment design
+- **Day 2 (2026-03-07)**: Full codebase implementation (14 tasks), unit tests, initial experiment
+- **Day 3 (2026-03-08)**: Diagnosed codebook collapse, fixed SimVQ implementation, Exp1 v2 (A-stage 5cat) training + eval completed — **STRONG GO**. B-stage code implemented (rotation trick + multi-token KV decoder)
+- **Day 4 (2026-03-09)**: Exp3 (B-stage 5cat) completed — **STRONG GO** (CD -6.2%). Discovered rotation trick incompatible with SimVQ. LVIS-Wide data prepared (844 categories, 71K patches). Exp2 (A-stage LVIS-Wide) completed — **STRONG GO** (ratio 1.07x, util 67.8%). Key finding: more categories = better generalization
+- **Day 5 (2026-03-13)**: Pod reset recovery — retrained Exp1/Exp3 from HF checkpoints, expanded LVIS-Wide dataset (1156 categories, 246K patches). Retrained Exp2 (A-stage LVIS-Wide) — **STRONG GO** (ratio 1.019x, util 95.3%). Trained Exp4 (B-stage LVIS-Wide) — **STRONG GO** (ratio 1.019x, util 94.9%). All 4 experiments completed
+- **Day 6 (2026-03-14)**: Final comparison report + visualizations generated. Full dataset + checkpoints backed up to HuggingFace. Documentation updated
 
 ## Pipeline
 
@@ -126,10 +155,6 @@ python -m pytest tests/ -v
 
 # See RUN_GUIDE.md for full training pipeline
 ```
-
-## Target Venue
-
-CCF-A conferences: CVPR / NeurIPS / ICCV
 
 ---
 
