@@ -88,14 +88,30 @@ B-stage 原计划使用 rotation trick（旋转等变增强），但实测与 Si
 
 硬件: RTX 4090 × 1, batch_size=256, 8 DataLoader workers
 
-## 6. Checkpoint Backup Status
+## 6. Checkpoint & Data Backup Status
+
+**HF Repo**: `Pthahnix/Meshlex-Research` (model repo)
+
+### Checkpoints
 
 | 实验 | HuggingFace Path | Status |
 |------|------------------|--------|
-| Exp1 | `Pthahnix/Meshlex-Research/checkpoints/exp1_A_5cat/` | Uploaded |
-| Exp2 | `Pthahnix/Meshlex-Research/checkpoints/exp2_A_lvis_wide/` | 上次版本已上传，重训版本待上传 |
-| Exp3 | `Pthahnix/Meshlex-Research/checkpoints/exp3_B_5cat/` | Uploaded |
-| Exp4 | `Pthahnix/Meshlex-Research/checkpoints/exp4_B_lvis_wide/` | 待上传 |
+| Exp1 | `checkpoints/exp1_A_5cat/` | ✅ Uploaded |
+| Exp2 | `checkpoints/exp2_A_lvis_wide/` | ✅ Uploaded |
+| Exp3 | `checkpoints/exp3_B_5cat/` | ✅ Uploaded |
+| Exp4 | `checkpoints/exp4_B_lvis_wide/` | ✅ Uploaded |
+
+每个实验均包含 `checkpoint_final.pt` + `training_history.json`。
+
+### 数据集
+
+完整处理后的数据集已上传至 `data/` 目录，包括：
+- `data/patches/` — 训练直接读取的 NPZ 文件（267K patches）
+- `data/meshes/` — 预处理后的降面 OBJ 文件（5,497 meshes）
+- `data/objaverse/` — 下载 manifest（可重建下载流程）
+- `data/patch_metadata_*.json` — patch 元数据
+
+下次使用时可直接从 HF 下载，无需重新下载 Objaverse 和预处理。
 
 ## 7. Go/No-Go Decision
 

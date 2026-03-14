@@ -20,29 +20,31 @@ MeshLex takes a different approach: instead of generating meshes face-by-face, w
 - **Day 2 (2026-03-07)**: Full codebase implementation (14 tasks), unit tests, initial experiment
 - **Day 3 (2026-03-08)**: Diagnosed codebook collapse, fixed SimVQ implementation, Exp1 v2 (A-stage 5cat) training + eval completed — **STRONG GO**. B-stage code implemented (rotation trick + multi-token KV decoder)
 - **Day 4 (2026-03-09)**: Exp3 (B-stage 5cat) completed — **STRONG GO** (CD -6.2%). Discovered rotation trick incompatible with SimVQ. LVIS-Wide data prepared (844 categories, 71K patches). Exp2 (A-stage LVIS-Wide) completed — **STRONG GO** (ratio 1.07x, util 67.8%). Key finding: more categories = better generalization
+- **Day 5 (2026-03-12~13)**: Pod reset recovery — retrained Exp1/Exp3 from HF checkpoints, expanded LVIS-Wide dataset (1156 categories, 246K patches). Retrained Exp2 (A-stage LVIS-Wide) — **STRONG GO** (ratio 1.019x, util 95.3%). Trained Exp4 (B-stage LVIS-Wide) — **STRONG GO** (ratio 1.019x, util 94.9%). All 4 experiments completed. Final comparison report + visualizations generated. Full dataset + checkpoints backed up to HuggingFace
 
 ## Current Status
 
-**Phase: 4-experiment matrix (A/B stage × 5cat/LVIS-Wide). 3/4 completed, all STRONG GO.**
+**Phase: Feasibility validation COMPLETE — 4/4 experiments STRONG GO. Ready for formal experiment design.**
 
 | # | Experiment | Status | Result |
 |---|-----------|--------|--------|
-| 1 | A-stage × 5-Category | **Done** | STRONG GO (ratio 1.14x, util 46%) |
-| 2 | A-stage × LVIS-Wide | **Done** | **STRONG GO (ratio 1.07x, util 67.8%)** |
-| 3 | B-stage × 5-Category | **Done** | STRONG GO (ratio 1.18x, CD -6.2%, util 99%) |
-| 4 | B-stage × LVIS-Wide | Pending | — |
+| 1 | A-stage × 5-Category | **Done** | STRONG GO (ratio 1.145x, util 46%) |
+| 2 | A-stage × LVIS-Wide | **Done** | **STRONG GO (ratio 1.019x, util 95.3%)** |
+| 3 | B-stage × 5-Category | **Done** | STRONG GO (ratio 1.185x, util 47%) |
+| 4 | B-stage × LVIS-Wide | **Done** | **STRONG GO (ratio 1.019x, util 94.9%)** |
 
-Key findings so far:
+Key findings:
 - SimVQ collapse fix successful: utilization 0.46% → 99%+ (217x improvement)
 - B-stage multi-token KV decoder effective: reconstruction CD reduced 6.2%
 - Rotation trick incompatible with SimVQ (causes rapid collapse)
-- Cross-category generalization validated: CD ratio 1.07-1.18x (< 1.2 threshold)
-- **More categories = better generalization**: LVIS-Wide (844 cat) outperforms 5-cat in all metrics
+- Cross-category generalization validated: CD ratio 1.019-1.185x (all < 1.2 threshold)
+- **More categories = dramatically better generalization**: LVIS-Wide (1156 cat) ratio 1.019x vs 5-cat 1.145x, util 95% vs 46%
+- **Best result (Exp4)**: Same-cat CD 211.6, Cross-cat CD 215.8 — near-zero generalization gap
 
 ## Pipeline
 
 ```
-ShapeNet OBJ → Decimation (pyfqmr) → Normalize [-1,1]
+Objaverse-LVIS GLB → Decimation (pyfqmr) → Normalize [-1,1]
     → METIS Patch Segmentation (~35 faces/patch)
     → PCA-aligned local coordinates
     → Face features (15-dim: vertices + normal + angles)
@@ -64,12 +66,14 @@ src/                               # Core modules
 └── evaluate.py                    # Evaluation metrics + Go/No-Go decision
 
 scripts/                           # CLI entry points
-├── download_shapenet.py           # Download ShapeNet from HuggingFace
-├── run_preprocessing.py           # Batch preprocess ShapeNet (with train/test split)
+├── download_objaverse.py          # Download from Objaverse-LVIS (5cat / lvis_wide modes)
+├── download_shapenet.py           # [legacy] Download ShapeNet from HuggingFace
+├── run_preprocessing.py           # Batch preprocess (supports manifest JSON + ShapeNet dirs)
 ├── train.py                       # Training (supports --resume)
 ├── init_codebook.py               # K-means codebook initialization
 ├── evaluate.py                    # Same-cat / cross-cat evaluation
 ├── visualize.py                   # t-SNE, utilization histogram, training curves
+├── final_comparison.py            # Cross-experiment comparison visualizations
 └── validate_task*.py              # Per-task real data validation scripts
 
 tests/                             # 17 unit tests
@@ -88,7 +92,9 @@ results/                           # Validation outputs (committed)
 ├── exp1_v2_collapse_fix/          # Exp1 v2 training reports + model analysis
 ├── exp1_A_5cat/                   # Exp1 A-stage 5cat eval + report
 ├── exp2_A_lvis_wide/              # Exp2 A-stage LVIS-Wide eval + report
-└── exp3_B_5cat/                   # Exp3 B-stage 5cat eval + report
+├── exp3_B_5cat/                   # Exp3 B-stage 5cat eval + report
+├── exp4_B_lvis_wide/              # Exp4 B-stage LVIS-Wide eval + report
+└── final_comparison/              # Final 4-experiment comparison dashboard + report
 
 .context/                          # Research documents (chronological)
 ├── 00-09_*.md                     # Research evolution documents
@@ -154,17 +160,18 @@ flowchart TB
         M2["CD Ratio\ncross-cat CD / same-cat CD\nTarget: < 1.2\n(1.0 = perfect generalization)"]
     end
 
-    subgraph RESULTS["Three Experiments"]
+    subgraph RESULTS["Four Experiments — All STRONG GO"]
         direction LR
-        R1["Exp1 A  5 categories\nratio 1.14x  util 46%"]
-        R2["Exp3 B  5 categories\nratio 1.18x  util 47%"]
-        R3["Exp2 A  844 categories\nratio 1.07x  util 67.8%"]
+        R1["Exp1 A × 5 cat\nratio 1.145x  util 46%"]
+        R2["Exp3 B × 5 cat\nratio 1.185x  util 47%"]
+        R3["Exp2 A × 1156 cat\nratio 1.019x  util 95.3%"]
+        R4["Exp4 B × 1156 cat\nratio 1.019x  util 94.9%"]
     end
 
     subgraph FINDING["Key Findings"]
         direction LR
-        F1["More scale = better generalization\n5 cat -> 844 cat: ratio 1.14 -> 1.07"]
-        F2["seen/unseen util nearly identical\nCodebook learns category-agnostic geometric primitives"]
+        F1["More scale = dramatically better\n5 cat -> 1156 cat: ratio 1.14 -> 1.02\nutilization 46% -> 95%"]
+        F2["Near-zero generalization gap\nCodebook learns category-agnostic\ngeometric primitives"]
     end
 
     QUESTION --> PIPELINE --> METRIC --> RESULTS --> FINDING
@@ -279,7 +286,7 @@ flowchart TD
 
 $$\text{CD Ratio} = \frac{\text{Cross-category Chamfer Distance}}{\text{Same-category Chamfer Distance}}$$
 
-- **Numerator**: reconstruction error on patches from **unseen** categories (50 categories never seen during training)
+- **Numerator**: reconstruction error on patches from **unseen** categories (categories held out during training)
 - **Denominator**: reconstruction error on patches from **seen** categories
 - The closer to 1.0, the better the vocabulary generalizes to unseen categories
 - Target: < 1.2 (at most 20% worse than seen categories)
@@ -288,13 +295,14 @@ $$\text{CD Ratio} = \frac{\text{Cross-category Chamfer Distance}}{\text{Same-cat
 
 | Experiment | Scale | Stage | CD Ratio | Util (same) | Util (cross) | Decision |
 |------------|-------|-------|----------|-------------|--------------|----------|
-| Exp1 | 5 categories | A (single-token KV) | 1.14x | 46.0% | — | ✅ STRONG GO |
-| Exp3 | 5 categories | B (4-token KV) | 1.18x | 47.1% | 47.3% | ✅ STRONG GO |
-| **Exp2** | **844 categories** | **A** | **1.07x** | **67.8%** | **48.2%** | ✅ **STRONG GO** |
+| Exp1 | 5 categories | A (single-token KV) | 1.145x | 46.0% | 47.0% | ✅ STRONG GO |
+| Exp3 | 5 categories | B (4-token KV) | 1.185x | 47.1% | 47.3% | ✅ STRONG GO |
+| Exp2 | 1156 categories | A (single-token KV) | **1.019x** | **95.3%** | **83.6%** | ✅ **STRONG GO** |
+| **Exp4** | **1156 categories** | **B (4-token KV)** | **1.019x** | **94.9%** | **82.8%** | ✅ **STRONG GO** |
 
-Scaling from 5 to 844 categories causes CD ratio to **decrease** (1.14 → 1.07) and utilization to **increase** (46% → 67.8%). Counterintuitively, more diverse training data makes the vocabulary *better* at generalizing to unseen categories, not worse.
+Scaling from 5 to 1156 categories causes CD ratio to **drop from 1.145x to 1.019x** (near-perfect generalization) and utilization to **surge from 46% to 95%** (nearly full codebook activation). The vocabulary becomes dramatically more universal with more diverse training data.
 
-A particularly notable result from Exp3: same-category eval utilization (47.1%) and cross-category eval utilization (47.3%) differ by only 0.2%. Unseen categories activate nearly the same number and distribution of codebook entries as seen categories — direct evidence that the learned vocabulary is genuinely category-agnostic.
+Exp4 (B-stage × LVIS-Wide) achieves the best absolute reconstruction quality (same-cat CD 211.6, cross-cat CD 215.8) with a generalization gap of only 1.9% — strong evidence that the learned 4096 patch prototypes are genuinely category-agnostic geometric primitives.
 
 ---
 
