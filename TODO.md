@@ -12,7 +12,7 @@
 | 3 | B-stage × 5-Category | **完成** | STRONG GO (ratio 1.18x, util 47%) | `checkpoints/exp3_B_5cat/` |
 | 4 | B-stage × LVIS-Wide | **完成** | STRONG GO (ratio 1.02x, util 94.9%) | 待上传 |
 
-**HF Repo**: `Pthahnix/Meshlex-Research` (model repo)
+**HF Repo**: `Pthahnix/MeshLex-Research` (model repo)
 
 ## 已完成步骤
 

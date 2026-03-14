@@ -96,7 +96,7 @@ results/                           # 验证产出（commit 到 repo）
   - 跨阶段 resume（A→B stage）需 strict=False 加载
   - **更多类别 = 更好泛化**: LVIS-Wide ratio 1.019x 远优于 5-cat 1.145x, util 95% vs 46%
   - **最佳结果**: Exp4 (B×LVIS) same-cat CD 211.6, cross-cat CD 215.8, 几乎无泛化损失
-- HF Checkpoints (Pthahnix/Meshlex-Research):
+- HF Checkpoints (Pthahnix/MeshLex-Research):
   - `checkpoints/exp1_A_5cat/` — Exp1 final checkpoint + history
   - `checkpoints/exp2_A_lvis_wide/` — Exp2 final checkpoint + history (上次版本；重训版本待上传)
   - `checkpoints/exp3_B_5cat/` — Exp3 final checkpoint + history
@@ -123,7 +123,7 @@ results/                           # 验证产出（commit 到 repo）
 
 ## Checkpoint 备份规范 — 重要
 
-**每次训练完成后，必须立即将 checkpoint 上传至 HuggingFace Model Repo：`Pthahnix/Meshlex-Research`。这是强制要求，不得跳过。**
+**每次训练完成后，必须立即将 checkpoint 上传至 HuggingFace Model Repo：`Pthahnix/MeshLex-Research`。这是强制要求，不得跳过。**
 
 Checkpoint 文件只存在于 RunPod 本地磁盘，pod 重置后将永久丢失。HuggingFace 是唯一的持久化备份。
 
@@ -142,7 +142,7 @@ api = HfApi()
 api.upload_file(
     path_or_fileobj="data/checkpoints/<exp_name>/checkpoint_final.pt",
     path_in_repo="checkpoints/<exp_name>/checkpoint_final.pt",
-    repo_id="Pthahnix/Meshlex-Research",
+    repo_id="Pthahnix/MeshLex-Research",
     repo_type="model",
 )
 print("Upload complete.")
@@ -170,7 +170,7 @@ EOF
 上传完成后，必须在终端输出确认信息，并在该实验的 progress/report markdown 中记录：
 
 ```
-✅ Checkpoint uploaded to HF: Pthahnix/Meshlex-Research/checkpoints/<exp_name>/checkpoint_final.pt
+✅ Checkpoint uploaded to HF: Pthahnix/MeshLex-Research/checkpoints/<exp_name>/checkpoint_final.pt
 ```
 
 ## 验证要求 — 重要

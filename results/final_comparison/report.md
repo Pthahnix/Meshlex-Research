@@ -90,7 +90,7 @@ B-stage 原计划使用 rotation trick（旋转等变增强），但实测与 Si
 
 ## 6. Checkpoint & Data Backup Status
 
-**HF Repo**: `Pthahnix/Meshlex-Research` (model repo)
+**HF Repo**: `Pthahnix/MeshLex-Research` (model repo)
 
 ### Checkpoints
 
