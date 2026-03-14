@@ -99,39 +99,26 @@ src/                               # Core modules
 
 scripts/                           # CLI entry points
 ├── download_objaverse.py          # Download from Objaverse-LVIS (5cat / lvis_wide modes)
-├── download_shapenet.py           # [legacy] Download ShapeNet from HuggingFace
-├── run_preprocessing.py           # Batch preprocess (supports manifest JSON + ShapeNet dirs)
+├── download_lvis_batched.py       # Batched LVIS-Wide download (disk-safe)
+├── run_preprocessing.py           # Batch preprocess (supports manifest JSON input)
 ├── train.py                       # Training (supports --resume)
 ├── init_codebook.py               # K-means codebook initialization
 ├── evaluate.py                    # Same-cat / cross-cat evaluation
 ├── visualize.py                   # t-SNE, utilization histogram, training curves
-├── final_comparison.py            # Cross-experiment comparison visualizations
-└── validate_task*.py              # Per-task real data validation scripts
+└── final_comparison.py            # Cross-experiment comparison visualizations
 
-tests/                             # 17 unit tests
-├── test_data_prep.py              # 2 tests
-├── test_patch_segment.py          # 4 tests
-├── test_patch_dataset.py          # 3 tests
-└── test_model.py                  # 8 tests
+tests/                             # Unit tests
+├── test_data_prep.py
+├── test_patch_segment.py
+├── test_patch_dataset.py
+└── test_model.py
 
-results/                           # Validation outputs (committed)
-├── task1_3_validation/            # Data prep + patch segmentation
-├── task4_validation/              # Dataset serialization
-├── task5_7_validation/            # Encoder/Codebook/Decoder
-├── task8_10_validation/           # VQ-VAE + Training
-├── task12_validation/             # Visualization
-├── task13_validation/             # K-means init
-├── exp1_v2_collapse_fix/          # Exp1 v2 training reports + model analysis
-├── exp1_A_5cat/                   # Exp1 A-stage 5cat eval + report
-├── exp2_A_lvis_wide/              # Exp2 A-stage LVIS-Wide eval + report
-├── exp3_B_5cat/                   # Exp3 B-stage 5cat eval + report
-├── exp4_B_lvis_wide/              # Exp4 B-stage LVIS-Wide eval + report
-└── final_comparison/              # Final 4-experiment comparison dashboard + report
-
-.context/                          # Research documents (chronological)
-├── 00-09_*.md                     # Research evolution documents
-├── material/                      # Analysis summaries of key papers
-└── paper/                         # [gitignored] 300+ paper markdown files
+results/                           # Experiment outputs (committed)
+├── exp1_A_5cat/                   # Exp1 eval + visualizations
+├── exp2_A_lvis_wide/              # Exp2 eval + visualizations
+├── exp3_B_5cat/                   # Exp3 eval + visualizations
+├── exp4_B_lvis_wide/              # Exp4 eval results
+└── final_comparison/              # 4-experiment comparison dashboard + report
 ```
 
 ## Key Differentiators
