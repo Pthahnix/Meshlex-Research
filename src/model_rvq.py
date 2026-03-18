@@ -32,6 +32,9 @@ class MeshLexRVQVAE(nn.Module):
         self.encoder = PatchEncoder(in_dim, hidden_dim, embed_dim)
         self.rvq = ResidualVQ(n_levels=n_levels, K=codebook_size, dim=embed_dim)
         self.decoder = PatchDecoder(embed_dim, max_vertices, num_kv_tokens=num_kv_tokens)
+        # Expose first-level codebook for Trainer compatibility
+        # (Trainer accesses model.codebook.K, .init_from_z, .get_quant_codebook, etc.)
+        self.codebook = self.rvq.levels[0]
         self.max_vertices = max_vertices
         self.lambda_commit = lambda_commit
         self.lambda_embed = lambda_embed
@@ -60,7 +63,3 @@ class MeshLexRVQVAE(nn.Module):
     def encode_only(self, x, edge_index, batch):
         return self.encoder(x, edge_index, batch)
 
-    @property
-    def codebook(self):
-        """Compatibility: return first level codebook for utilization tracking."""
-        return self.rvq.codebooks[0]
