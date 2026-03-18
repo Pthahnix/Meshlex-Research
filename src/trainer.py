@@ -117,9 +117,13 @@ class Trainer:
 
         self.scheduler.step()
 
-        # Codebook utilization
+        # Codebook utilization (use first-level indices for RVQ compatibility)
         all_idx = torch.cat(all_indices)
-        utilization = all_idx.unique().numel() / self.model.codebook.K
+        if all_idx.dim() > 1:
+            all_idx_l0 = all_idx[:, 0]  # first RVQ level
+        else:
+            all_idx_l0 = all_idx
+        utilization = all_idx_l0.unique().numel() / self.model.codebook.K
 
         # K-means codebook init at end of encoder warmup
         if epoch == self.encoder_warmup_epochs - 1 and self.encoder_warmup_epochs > 0:
@@ -127,7 +131,7 @@ class Trainer:
 
         # Dead code revival (only after VQ training starts)
         if use_vq and self.dead_code_interval > 0 and (epoch + 1) % self.dead_code_interval == 0:
-            self._revive_dead_codes(all_idx, torch.cat(all_z))
+            self._revive_dead_codes(all_idx_l0, torch.cat(all_z))
 
         # Free memory
         del all_z
