@@ -2,7 +2,8 @@
 
 > **Date**: 2026-03-18
 > **Status**: Design Spec
-> **Base**: MeshLex v1 (4/4 STRONG GO, CD ratio 1.019x, util 95.3%)
+> **Version**: v0.2.0 (exploratory — informing final novel approach)
+> **Base**: MeshLex v0.1.0 (4/4 STRONG GO, CD ratio 1.019x, util 95.3%)
 > **Target Venue**: CCF-A (CVPR / NeurIPS / ICCV)
 
 ---
@@ -12,6 +13,8 @@
 MeshLex v1 validated that mesh local topology forms a **universal vocabulary** — 4000-face meshes can be represented by ~130 patch tokens with near-perfect cross-category generalization (ratio 1.019x). But v1 is reconstruction-only.
 
 **v2 asks**: Can we use this vocabulary to **generate** new meshes?
+
+**v0.2.0 定位**: 这不是最终投稿方案。v0.2.0 是一组探索性实验，通过模块化组合已有技术（RVQ、BPE、AR Transformer），用 2×2 消融矩阵找出哪些方向有潜力。实验结果将指导后续 v1.0 的自主创新方案设计。
 
 ---
 
@@ -59,7 +62,7 @@ Mesh → ①切块 → ②编码 → ③生成 → ④缝合 → New Mesh
 Each BPE token = a group of merged faces = one "data-driven patch".
 
 **Go/No-Go (Phase 0)**:
-- H1a: ≥60% of BPE tokens have within-token normal variance < METIS median → Go
+- H1a: ≥60% of BPE tokens **with ≥10 faces** have within-token normal variance < METIS median → Go
 - H5: MI(discrete_label, continuous_features) > 0.5 for at least one granularity → Go
 - Patch size distribution: std < 2× METIS std → acceptable
 - Any No-Go → fall back to METIS for all subsequent phases
@@ -102,7 +105,9 @@ Each level uses SimVQ internally (frozen C + learnable W) to prevent collapse.
 
 **Total codebook capacity**: 1024^3 = ~10^9 combinations (vs v1's 4096).
 
-**Training strategy**: Progressive — train Level 1 first until convergence, freeze, add Level 2, freeze, add Level 3. This leverages v1's proven single-level training stability.
+**Training strategy**: Joint — all 3 levels and decoder train simultaneously from scratch. The RVQ gradient flows through all levels via residual connections. This is simpler than progressive training and avoids the decoder retraining problem.
+
+**Alternative** (if joint training is unstable): Progressive with decoder fine-tuning at each level addition. Budget extra ~4h GPU per level.
 
 ### 4.3 Decoder
 
@@ -128,10 +133,12 @@ Same as v1:
 Each mesh is a sequence of M ≈ 130 patches. Each patch is represented as:
 
 ```
-(tok_L1, tok_L2, tok_L3, pos_x, pos_y, pos_z, scale)
+(pos_x, pos_y, pos_z, scale, tok_L1, tok_L2, tok_L3)
 ```
 
-For SimVQ variant, tok_L2 and tok_L3 are omitted (single token per patch).
+**Prediction order**: Position first, then codebook tokens. This way the model knows WHERE before deciding WHAT — spatial context informs patch type selection.
+
+For SimVQ variant: `(pos_x, pos_y, pos_z, scale, tok)` — 5 tokens/patch.
 
 Position: patch centroid, quantized to 256 levels per axis.
 Scale: patch bounding sphere radius, quantized to 64 levels.
@@ -145,7 +152,7 @@ Z-order (Morton code) on patch centroids for deterministic spatial ordering. Sim
 GPT-2 style decoder-only Transformer:
 - ~50M parameters
 - 12 layers, 768 hidden dim, 12 attention heads
-- Context length: 512 tokens (sufficient for 130 patches × ~4 tokens/patch)
+- Context length: 1024 tokens (130 patches × 7 tokens/patch = 910 for RVQ; 130 × 4 = 520 for SimVQ)
 - Training: next-token prediction on patch sequences
 
 ### 5.4 Conditioning
@@ -161,20 +168,49 @@ Text conditioning is a stretch goal, not required for the paper.
 
 ### 6.1 Problem
 
-Each patch is decoded independently. Adjacent patches need their boundary vertices aligned to form a watertight mesh.
+Each patch is decoded independently — producing local vertex coordinates but no inter-patch connectivity. To form a complete mesh, we must:
+1. Determine which patches are adjacent
+2. Align boundary vertices between adjacent patches
+3. Create inter-patch face connectivity
 
-### 6.2 Stitching MLP
+### 6.2 Adjacency Recovery
 
+During **training/reconstruction**: adjacency is known from the original mesh partitioning (METIS or BPE records which patches share edges).
+
+During **generation**: the AR model predicts patch positions. Adjacency is inferred geometrically:
+- For each pair of patches, compute minimum distance between their boundary vertices
+- Threshold: if min_distance < δ (e.g., 0.05 in normalized coordinates), mark as adjacent
+- This is O(M²) per mesh but M ≈ 130, so negligible
+
+### 6.3 Boundary Alignment
+
+**Ground-truth extraction** (for training):
+1. After METIS/BPE partitioning, record which original vertices are shared between adjacent patches
+2. Each shared vertex appears in both patches (with different local indices)
+3. After independent patch reconstruction, the two copies will differ — the GT target is the original shared position
+
+**Stitching MLP**:
 ```
-Input: boundary vertices from patch_i and patch_j (where i,j are adjacent)
-Output: merged boundary vertex positions
+Input: concat(patch_i_boundary_verts, patch_j_boundary_verts, relative_position)
+       shape: (N_boundary × 9) — 3 coords each + 3 relative offset
+Output: merged boundary vertex positions, shape: (N_boundary × 3)
 ```
 
-Training supervision: original mesh shared vertices as ground truth.
+Small MLP (3 layers, 256 hidden). Trained with L2 loss against GT shared vertices.
 
-### 6.3 Fallback
+### 6.4 Inter-Patch Face Connectivity
 
-If learned stitching underperforms: simple nearest-vertex merging with distance threshold.
+After boundary vertex alignment:
+- Identify corresponding boundary vertex pairs (nearest-neighbor matching)
+- Merge matched pairs into single vertices
+- Face indices from both patches are re-indexed to use shared vertex IDs
+- Result: connected mesh with correct face-level topology across patch boundaries
+
+### 6.5 Fallback
+
+If learned stitching underperforms:
+- Simple nearest-vertex merging with distance threshold (will produce some non-manifold edges)
+- Report non-manifold edge ratio as a mesh quality metric
 
 ---
 
@@ -210,9 +246,11 @@ All 4 configs share the same M3 (AR model) and M4 (stitching).
 
 ### 8.2 Generation (Module 3+4)
 - FID, COV, MMD on ShapeNet Chair/Table
-- Generation baselines: PolyGen, MeshGPT, FACE (published numbers)
+- **Data note**: Reconstruction uses Objaverse-LVIS (v1 data). Generation comparison requires ShapeNet Chair/Table to match published baselines. AR model is retrained on ShapeNet for this table.
+- Generation baselines: PolyGen, MeshGPT, FACE (published numbers; note any metric protocol differences)
 - Mesh quality: non-manifold edge ratio, self-intersection ratio
 - Compression: tokens per mesh (vs per-face methods)
+  - Note: the "277× compression" counts patch tokens only; stitching overhead is separate and reported
 
 ### 8.3 Analysis
 - BPE vocabulary visualization (top-K tokens as mesh substructures)
@@ -228,7 +266,7 @@ All 4 configs share the same M3 (AR model) and M4 (stitching).
 | **0** | BPE feasibility: discretization MI + BPE run + Go/No-Go | ~2h CPU | None |
 | **1** | RVQ tokenizer training (C2: METIS+RVQ) | ~12h GPU | None |
 | **2** | BPE partition + tokenizer training (C3, C4) | ~20h GPU | Phase 0 Go |
-| **3** | AR generation model training | ~30h GPU | Phase 1 |
+| **3** | AR generation model training | ~30h GPU | Phase 1 (+ Phase 2 if BPE Go) |
 | **4** | Stitching module + full pipeline evaluation | ~15h GPU | Phase 3 |
 | **5** | Ablation runs + visualization + paper figures | ~20h GPU | Phase 4 |
 | **Buffer** | Re-runs, debugging | ~20h | — |
