@@ -197,3 +197,46 @@ class PatchData(_PyGData):
         if key in ("gt_vertices",):
             return None  # stack instead of cat
         return super().__cat_dim__(key, value, *args, **kw)
+
+
+class MeshSequenceDataset(Dataset):
+    """Dataset that returns full-mesh patch token sequences for AR training.
+
+    Each item = one mesh's patch sequence (all patches in Z-order).
+    Requires pre-computed codebook indices from a trained VQ-VAE.
+
+    Expects a directory with files like: {mesh_id}_sequence.npz
+    Each NPZ contains: centroids (M,3), scales (M,), tokens (M,) or (M,3)
+    """
+
+    def __init__(self, sequence_dir: str, mode: str = "rvq", max_seq_len: int = 1024):
+        self.sequence_dir = Path(sequence_dir)
+        self.files = sorted(self.sequence_dir.glob("*_sequence.npz"))
+        self.mode = mode
+        self.max_seq_len = max_seq_len
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        from src.patch_sequence import patches_to_token_sequence
+
+        data = np.load(str(self.files[idx]))
+        centroids = data["centroids"]
+        scales = data["scales"]
+        tokens = data["tokens"]
+
+        seq = patches_to_token_sequence(centroids, scales, tokens, mode=self.mode)
+
+        # Build input (pad with 0) and target (pad with -100) separately
+        # Input = seq[:-1], Target = seq[1:] (teacher forcing)
+        seq_len = min(len(seq), self.max_seq_len + 1)  # +1 for shift
+        seq = seq[:seq_len]
+
+        input_ids = np.zeros(self.max_seq_len, dtype=np.int64)
+        target_ids = np.full(self.max_seq_len, -100, dtype=np.int64)
+
+        input_ids[:seq_len - 1] = seq[:-1]
+        target_ids[:seq_len - 1] = seq[1:]
+
+        return torch.tensor(input_ids, dtype=torch.long), torch.tensor(target_ids, dtype=torch.long)
