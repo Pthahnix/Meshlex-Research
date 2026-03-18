@@ -1,0 +1,30 @@
+{
+  "n_meshes": 200,
+  "granularities_mi": {
+    "coarse": 1.1646141564189814,
+    "medium": 1.3796451142579873,
+    "fine": 1.5805195700593393
+  },
+  "best_granularity": "fine",
+  "vocab_size": 2000,
+  "base_alphabet_size": 1937,
+  "n_merges": 63,
+  "bpe_training_time_sec": 63.58622598648071,
+  "metis_normal_var_median": 0.6351883466737144,
+  "h1a_ratio": 1.0,
+  "h1a_go": true,
+  "h5_any_mi_above_0.5": true,
+  "h5_go": true,
+  "patch_size_stats": {
+    "mean": 1.3500342138166497,
+    "std": 1.108116538011074,
+    "min": 1,
+    "max": 16,
+    "p5": 1.0,
+    "p25": 1.0,
+    "p50": 1.0,
+    "p75": 1.0,
+    "p95": 2.0
+  },
+  "decision": "GO"
+}
