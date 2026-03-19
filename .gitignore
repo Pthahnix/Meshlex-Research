@@ -31,3 +31,5 @@ checkpoints/
 __pycache__/
 *.pyc
 *.egg-info/
+
+TODO.md
