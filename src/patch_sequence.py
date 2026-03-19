@@ -109,6 +109,14 @@ def patches_to_token_sequence(
     Returns:
         (M * tokens_per_patch,) int64 flat token sequence.
     """
+    # Ensure torch tensors (MeshSequenceDataset passes numpy arrays)
+    if not isinstance(centroids, torch.Tensor):
+        centroids = torch.tensor(centroids, dtype=torch.float32)
+    if not isinstance(scales, torch.Tensor):
+        scales = torch.tensor(scales, dtype=torch.float32)
+    if not isinstance(codebook_tokens, torch.Tensor):
+        codebook_tokens = torch.tensor(codebook_tokens, dtype=torch.long)
+
     M = centroids.shape[0]
     cb_offset = 3 * n_pos_bins + n_scale_bins
 
