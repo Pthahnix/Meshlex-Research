@@ -545,7 +545,7 @@ def decode_sequence_to_patches(sequence, vqvae, device,
 
 Same as Phase B but:
 - VQ-VAE trained on `local_vertices_nopca` features (no PCA rotation)
-- 7 tokens/patch, vocab=1856, max_seq_len=1024
+- 7 tokens/patch, vocab=1852, max_seq_len=1024
 - Shorter sequences → faster AR training
 
 ### 6.3 Resource Estimates
