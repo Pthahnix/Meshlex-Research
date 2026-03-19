@@ -99,7 +99,7 @@ def main():
                 top_k=args.top_k,
             )
 
-        seq_np = seq.cpu().numpy()
+        seq_np = seq[0].cpu().numpy()  # squeeze batch dim
         patch_params = decode_token_sequence(seq_np, mode=args.mode)
         print(f"  Generated {len(patch_params)} patches")
 
