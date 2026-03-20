@@ -20,6 +20,7 @@ class MeshPatch:
 
     # Normalized local coordinates
     local_vertices: np.ndarray     # (V, 3) centered + PCA-aligned + unit-scaled
+    local_vertices_nopca: np.ndarray = None  # (V, 3) centered + unit-scaled (no PCA)
 
 
 def _build_face_adjacency(mesh: trimesh.Trimesh):
@@ -172,6 +173,10 @@ def segment_mesh_to_patches(
         # Normalize
         local_verts, centroid, axes, scale = _normalize_patch_coords(vertices)
 
+        # No-PCA normalization: center + scale only
+        centered = vertices - centroid
+        local_verts_nopca = centered / scale if scale > 1e-8 else centered
+
         patches.append(MeshPatch(
             faces=local_faces,
             vertices=vertices,
@@ -181,6 +186,7 @@ def segment_mesh_to_patches(
             principal_axes=axes,
             scale=scale,
             local_vertices=local_verts,
+            local_vertices_nopca=local_verts_nopca,
         ))
 
     return patches

@@ -43,3 +43,15 @@ def test_patch_local_vertices_normalized():
         # Local vertices should be roughly within unit sphere
         norms = np.linalg.norm(p.local_vertices, axis=1)
         assert norms.max() <= 1.05, f"local_vertices not normalized: max norm {norms.max()}"
+
+
+def test_patch_has_local_vertices_nopca():
+    """Each patch should have a local_vertices_nopca field (center+scale, no PCA)."""
+    mesh = _make_sphere()
+    patches = segment_mesh_to_patches(mesh, target_patch_faces=35)
+    for p in patches:
+        assert hasattr(p, "local_vertices_nopca"), "MeshPatch missing local_vertices_nopca"
+        assert p.local_vertices_nopca is not None
+        assert p.local_vertices_nopca.shape == p.local_vertices.shape
+        norms_nopca = np.linalg.norm(p.local_vertices_nopca, axis=1)
+        assert norms_nopca.max() <= 1.05, f"nopca not normalized: max norm {norms_nopca.max()}"

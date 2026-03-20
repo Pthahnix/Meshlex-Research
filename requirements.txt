@@ -12,3 +12,6 @@ matplotlib
 open3d
 pyvista
 umap-learn
+daft[huggingface]>=0.5.0
+objaverse
+huggingface_hub
