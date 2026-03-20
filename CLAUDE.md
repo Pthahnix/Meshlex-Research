@@ -21,16 +21,23 @@ context/                           # 研究上下文文档（按时间顺序）
 └── paper/                         # 300+ 篇论文的 markdown 原文
 
 docs/superpowers/
-├── specs/2026-03-18-meshlex-v2-design.md          # v2 完整设计文档
+├── specs/
+│   ├── 2026-03-18-meshlex-v2-design.md            # v2 完整设计文档
+│   ├── 2026-03-19-assembly-fix-full-retrain-design.md  # Assembly fix + full retrain spec
+│   └── 2026-03-20-daft-dataset-pipeline-design.md # Daft dataset pipeline spec
 └── plans/
     ├── 2026-03-18-meshlex-v2-implementation.md    # v2 13-task 实现计划
-    └── 2026-03-19-ar-loss-fix-implementation.md   # AR v2 fix plan (7 tasks)
+    ├── 2026-03-19-ar-loss-fix-implementation.md   # AR v2 fix plan (7 tasks)
+    ├── 2026-03-19-dataset-streaming-pipeline.md   # Dataset pipeline plan (superseded)
+    └── 2026-03-20-daft-dataset-pipeline.md        # Daft dataset pipeline plan (active)
 
 src/                               # 核心代码
 ├── data_prep.py                   # Mesh 加载、降面、归一化
-├── patch_segment.py               # METIS Patch 分割 + PCA 归一化
+├── patch_segment.py               # METIS Patch 分割 + PCA 归一化 + dual normalization (PCA + noPCA)
 ├── patch_dataset.py               # NPZ 序列化 + PyTorch/PyG Dataset
 ├── patch_sequence.py              # Token sequence 编解码 (RVQ 7-token format)
+├── daft_utils.py                  # Daft DataFrame utilities (row conversion, schema casting, HF config)
+├── stream_utils.py                # Streaming pipeline helpers (ProgressTracker, MetadataCollector, synset map)
 ├── model.py                       # PatchEncoder, SimVQCodebook, PatchDecoder, MeshLexVQVAE (v1)
 ├── model_rvq.py                   # MeshLexRVQVAE (v2, 3-level RVQ)
 ├── rvq.py                         # ResidualVQ (3-level SimVQ)
@@ -53,6 +60,11 @@ scripts/                           # 运行脚本
 ├── generate_v2_pipeline.py        # 完整生成 pipeline + 7 阶段可视化
 ├── visualize_mesh_comparison.py   # 原始 vs 重建 mesh 对比 + AR 生成 mesh 可视化
 ├── evaluate_generation.py         # 生成质量评估 (CD, token distribution, etc.)
+├── stream_objaverse_daft.py       # Objaverse-LVIS streaming → Daft → HF Parquet
+├── stream_shapenet_daft.py        # ShapeNetCore v2 streaming → Daft → HF Parquet
+├── generate_splits_daft.py        # Generate train/test/unseen splits
+├── validate_dataset_daft.py       # Validate HF dataset thresholds
+├── run_dataset_pipeline.sh        # Overnight dataset pipeline orchestrator
 ├── run_phase0_bpe.py              # Phase 0 BPE 可行性验证
 ├── run_preprocessing.py           # 批量预处理
 ├── download_objaverse.py          # Objaverse-LVIS 下载
@@ -62,6 +74,9 @@ tests/                             # Unit tests
 ├── test_data_prep.py
 ├── test_patch_segment.py
 ├── test_patch_dataset.py
+├── test_daft_utils.py              # Daft row conversion + schema tests
+├── test_stream_utils.py            # Stream helpers tests
+├── test_generate_splits.py         # Split generation logic tests
 ├── test_model.py
 ├── test_rvq.py
 ├── test_ar_model.py
@@ -107,7 +122,7 @@ results/                           # 实验结果 (committed)
 - **命名策略**：避开 "BPE for Mesh"（被 FreeMesh ICML 2025 占用），使用 "MeshLex"
 - **差异化定位**：vs MeshMosaic（我们是 codebook 选取，不是逐 face 生成）；vs FACE（我们是 per-patch，不是 per-face）
 
-## Current Status (2026-03-19)
+## Current Status (2026-03-20)
 
 ### v1 可行性验证 — COMPLETE (4/4 STRONG GO)
 
@@ -126,12 +141,20 @@ results/                           # 实验结果 (committed)
 | Phase 3 | AR 训练 | COMPLETE (v2) | v1: loss 5.41 (87.3M params, 太大) → v2: loss 1.48, ppl 4.4 (20.4M params) |
 | Phase 4 | Generation Pipeline | COMPLETE | 40 meshes generated, surface recon via Ball Pivoting |
 
+**当前进行中:**
+
+| Phase | 内容 | 状态 | 备注 |
+|-------|------|------|------|
+| Phase D | 统一数据集 (Daft pipeline) | IN PROGRESS | Objaverse-LVIS 46K + ShapeNet 51K → HF Parquet |
+
 **待完成:**
 
 | Phase | 内容 | 状态 | 备注 |
 |-------|------|------|------|
-| Phase 2 | BPE Partition + C3/C4 | PENDING | BPE merge 效果差 (2000 vocab 仅 63 次 merge)，需重新评估 |
-| Phase 5 | Ablation + Metrics | PARTIAL | 基础 evaluation 已跑，完整 ablation 待做 |
+| Phase A | Assembly fix | PENDING | 修复 VQ-VAE 重建旋转 bug |
+| Phase B | PCA + Rotation Tokens | PENDING | 需 Phase D 数据集 |
+| Phase C | No-PCA baseline | PENDING | 需 Phase D 数据集 |
+| Phase E | Ablation comparison | PENDING | 需 Phase B + C |
 
 ### v2 Checkpoints (HF: Pthahnix/MeshLex-Research)
 
@@ -139,6 +162,12 @@ results/                           # 实验结果 (committed)
 |------|----------|---------|--------|
 | RVQ VQ-VAE | `data/checkpoints/rvq_lvis/checkpoint_final.pt` | `checkpoints/rvq_lvis/` | ~2M |
 | AR v2 | `data/checkpoints/ar_v2/checkpoint_final.pt` | `checkpoints/ar_v2/` | 20.4M |
+
+### HF Datasets
+
+| Repo | 内容 | 格式 |
+|------|------|------|
+| `Pthahnix/MeshLex-Patches` | 统一数据集 (Objaverse-LVIS + ShapeNet) | Parquet (via Daft) |
 
 ### v2 Results
 
@@ -229,9 +258,9 @@ EOF
 
 | 资源 | 规格 |
 |------|------|
-| GPU | RTX 4090 × 1 |
-| vCPU | 16 核 |
-| Memory | 62 GB |
+| GPU | NVIDIA RTX A4000 × 1 (16 GB VRAM) |
+| vCPU | 128 核 |
+| Memory | 503 GB |
 | Container Disk | 80 GB |
 
 ## 资源管理规范 — 重要
