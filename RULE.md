@@ -5,6 +5,7 @@
 - 完成一个完整功能模块就立即 commit
 - commit 后立即 `git push`
 - commit 粒度以"功能"为单位，非单个函数
+- 新增 `results/` 下的产出后，验证无误即立即将对应结果与相关脚本一起 commit 并 `git push`
 
 ## Checkpoint 备份（强制）
 
