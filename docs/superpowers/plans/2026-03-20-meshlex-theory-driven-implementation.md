@@ -722,7 +722,16 @@ def run_rate_distortion_experiment(
         results["D"].append(final_D)
 
         # Record codebook utilization
-        util = trainer.compute_codebook_utilization()
+        # Count unique token IDs used in last epoch
+        all_indices = []
+        with torch.no_grad():
+            for batch in trainer.val_loader:
+                output = model(batch["x"].to(device), batch["edge_index"].to(device),
+                              batch["batch"].to(device), batch["n_vertices"].to(device),
+                              batch["gt_vertices"].to(device))
+                all_indices.append(output["indices"].cpu().numpy())
+        all_indices = np.concatenate(all_indices)
+        util = len(np.unique(all_indices)) / K
         results["utilization"].append(util)
 
         print(f"  K={K}: D={final_D:.4f}, util={util:.1%}")
@@ -768,7 +777,16 @@ def run_power_law_analysis(
             # Move to device
             x = batch["x"].unsqueeze(0).to(device)
             edge_index = batch["edge_index"].unsqueeze(0).to(device)
-            # ... encode and count
+            batch_idx = torch.zeros(1, dtype=torch.long, device=device)
+            n_vertices = batch["n_vertices"].unsqueeze(0).to(device)
+            gt_vertices = batch["gt_vertices"].unsqueeze(0).to(device)
+
+            # Forward pass to get token indices
+            output = model(x, edge_index, batch_idx, n_vertices, gt_vertices)
+            token_id = output["indices"].item()
+
+            # Count token frequency
+            token_counts[token_id] = token_counts.get(token_id, 0) + 1
 
     # Fit power law
     frequencies = np.array(sorted(token_counts.values(), reverse=True))
@@ -872,9 +890,139 @@ Includes:
 
 ---
 
+### Task 5: Curvature Correlation Analysis
+
+**Files:**
+- Modify: `scripts/run_theory_experiments.py`
+- Modify: `src/theory_analysis.py`
+
+- [ ] **Step 1: Add curvature correlation function to theory_analysis.py**
+
+```python
+# Add to src/theory_analysis.py
+
+def compute_curvature_frequency_correlation(
+    token_frequencies: np.ndarray,
+    patch_curvatures: np.ndarray,
+    token_assignments: np.ndarray
+) -> Dict[str, float]:
+    """Correlate token frequency with patch curvature.
+
+    Args:
+        token_frequencies: (K,) frequency of each token
+        patch_curvatures: (N,) curvature of each patch
+        token_assignments: (N,) token ID assigned to each patch
+
+    Returns:
+        Dict with correlation statistics.
+    """
+    # Rank tokens by frequency
+    sorted_indices = np.argsort(token_frequencies)[::-1]
+    n_tokens = len(token_frequencies)
+
+    # Get average curvature for each token
+    token_avg_curvature = np.zeros(n_tokens)
+    for tok_id in range(n_tokens):
+        mask = token_assignments == tok_id
+        if mask.sum() > 0:
+            token_avg_curvature[tok_id] = np.mean(patch_curvatures[mask])
+
+    # Group by frequency rank
+    top_10_pct = int(n_tokens * 0.1)
+    middle_40_pct = int(n_tokens * 0.5)
+    bottom_50_pct = n_tokens
+
+    results = {
+        "top_10_avg_curvature": float(np.mean(
+            [token_avg_curvature[i] for i in sorted_indices[:top_10_pct]]
+        )),
+        "middle_40_avg_curvature": float(np.mean(
+            [token_avg_curvature[i] for i in sorted_indices[top_10_pct:middle_40_pct]]
+        )),
+        "bottom_50_avg_curvature": float(np.mean(
+            [token_avg_curvature[i] for i in sorted_indices[middle_40_pct:]]
+        )),
+        "spearman_correlation": float(stats.spearmanr(
+            token_frequencies, token_avg_curvature
+        )[0]),
+    }
+    return results
+```
+
+- [ ] **Step 2: Add correlation analysis mode to run_theory_experiments.py**
+
+```python
+# Add mode to scripts/run_theory_experiments.py
+
+def run_curvature_correlation_analysis(args):
+    """Run curvature-frequency correlation analysis."""
+    # Load model and data
+    # For each patch: get token assignment and curvature
+    # Compute correlation statistics
+    # Generate table matching spec Section 4.3
+    pass
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/theory_analysis.py scripts/run_theory_experiments.py
+git commit -m "feat: add curvature-frequency correlation analysis"
+```
+
+---
+
+### Task 6: Cross-Dataset Universality Experiment
+
+**Files:**
+- Modify: `scripts/run_theory_experiments.py`
+
+- [ ] **Step 1: Add universality experiment function**
+
+```python
+# Add to scripts/run_theory_experiments.py
+
+def run_universality_experiment(
+    train_data_path: str,  # Objaverse
+    test_data_path: str,   # ShapeNet
+    model_path: str,
+    output_dir: Path,
+    device: str = "cuda"
+):
+    """Test if power law distribution transfers across datasets.
+
+    Per spec Section 4.2:
+    1. Load model trained on Objaverse
+    2. Encode ShapeNet patches (zero fine-tuning)
+    3. Compare power law exponents (α)
+    """
+    # Load Objaverse-trained model
+    # Encode ShapeNet patches
+    # Fit power law on ShapeNet token frequencies
+    # Compare α values
+    pass
+```
+
+- [ ] **Step 2: Add universality mode to argparse**
+
+```python
+# Add to argparse in main()
+parser.add_argument("--test-data", type=str,
+                    help="Test data for universality experiment (e.g., ShapeNet)")
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add scripts/run_theory_experiments.py
+git commit -m "feat: add cross-dataset universality experiment"
+```
+
+---
+
 ## Phase 3: Curvature-Aware Codebook Model
 
-### Task 5: Curvature-Aware VQ-VAE Model
+### Task 7: Curvature-Aware VQ-VAE Model
 
 **Files:**
 - Create: `src/model_curvature.py`
@@ -1165,12 +1313,15 @@ Key features:
 
 ## Phase 4: Lean4 Formalization
 
-### Task 6: Lean4 Project Setup
+### Task 8: Lean4 Project Setup and Proof Skeleton
+
+**Note:** This task sets up the project structure and proof skeleton. The actual proof completion (removing `sorry` statements) is a separate, substantial effort estimated at 2-3 weeks per the spec.
 
 **Files:**
 - Create: `lean/MeshLex/` directory structure
 - Create: `lean/MeshLex/lakefile.lean`
 - Create: `lean/MeshLex/MeshLex.lean`
+- Create: `lean/MeshLex/README.md`
 
 - [ ] **Step 1: Create Lean4 project structure**
 
@@ -1349,7 +1500,7 @@ Includes:
 
 ## Phase 5: Training and Evaluation Scripts
 
-### Task 7: Curvature-Aware Training Script
+### Task 9: Curvature-Aware Training Script
 
 **Files:**
 - Create: `scripts/train_curvature_vqvae.py`
@@ -1561,7 +1712,7 @@ Features:
 
 ---
 
-### Task 8: Evaluation and Visualization
+### Task 10: Evaluation and Visualization
 
 **Files:**
 - Create: `scripts/evaluate_curvature_vqvae.py`
@@ -1735,20 +1886,32 @@ Reports CD, NC, F-Score, and codebook utilization."
 
 | Phase | Tasks | Estimated Time |
 |-------|-------|----------------|
-| Phase 1: Curvature Computation | 2 | ~4 hours |
-| Phase 2: Theory Analysis | 2 | ~6 hours |
-| Phase 3: Curvature-Aware Model | 1 | ~4 hours |
-| Phase 4: Lean4 Formalization | 1 | ~2 weeks |
-| Phase 5: Training Scripts | 2 | ~4 hours |
+| Phase 1: Curvature Computation | 2 (Task 1-2) | ~4 hours |
+| Phase 2: Theory Analysis | 4 (Task 3-6) | ~10 hours |
+| Phase 3: Curvature-Aware Model | 1 (Task 7) | ~4 hours |
+| Phase 4: Lean4 Formalization | 1 (Task 8) | ~2 weeks (setup) |
+| Phase 5: Training Scripts | 2 (Task 9-10) | ~4 hours |
 
-**Total**: 8 main tasks, ~3-4 weeks (including Lean4 work)
+**Total**: 10 tasks, ~3-4 weeks (including Lean4 setup)
 
 ### Dependencies
 
 ```
-Task 1 (Curvature) ──┬──> Task 5 (Model)
+Task 1 (Curvature) ──┬──> Task 7 (Model)
                      │
 Task 2 (Binning) ────┘
+
+Task 3 (Power Law) ────> Task 4 (RD Experiment)
+                              │
+                              ├──> Task 5 (Curvature Correlation)
+                              │
+                              └──> Task 6 (Universality)
+                                       │
+                                       v
+Task 8 (Lean4) ───────────────────────────────────> Paper writing
+
+Task 9 (Training) ────> Task 10 (Evaluation)
+```
 
 Task 3 (Power Law) ────> Task 4 (RD Experiment) ────> Task 8 (Evaluation)
 
