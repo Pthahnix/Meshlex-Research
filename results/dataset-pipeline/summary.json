@@ -1,13 +1,13 @@
 {
-  "timestamp": "2026-03-20 10:11:22",
+  "timestamp": "2026-03-20 11:11:12",
   "objaverse": {
-    "completed": 11,
+    "completed": 16,
     "total_batches": 93,
-    "total_ok": 3849,
-    "total_fail": 1651,
-    "total_patches": 560203,
-    "success_rate": 70.0,
-    "avg_patches_per_mesh": 145.5
+    "total_ok": 5503,
+    "total_fail": 2497,
+    "total_patches": 821725,
+    "success_rate": 68.8,
+    "avg_patches_per_mesh": 149.3
   },
   "shapenet": {
     "completed": 0,
@@ -16,8 +16,8 @@
     "total_patches": 0,
     "success_rate": 0
   },
-  "total_batches_done": 11,
-  "total_patches": 560203,
-  "total_ok": 3849,
-  "total_fail": 1651
+  "total_batches_done": 16,
+  "total_patches": 821725,
+  "total_ok": 5503,
+  "total_fail": 2497
 }
