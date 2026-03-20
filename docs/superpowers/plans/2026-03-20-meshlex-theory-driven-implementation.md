@@ -8,6 +8,18 @@
 
 **Tech Stack:** Python 3.10+, PyTorch 2.0+, PyG, trimesh, Lean4, matplotlib, scipy
 
+**Scope:**
+- ✅ C1: Phase transition experiments (Task 4)
+- ✅ C2: Power law + curvature correlation (Task 3, 5)
+- ✅ C3: Lean4 formalization setup (Task 8)
+- ✅ C4: Curvature-aware codebook ablation (Task 9-11)
+- ⏳ C5: Generation evaluation (AR model training deferred to separate plan)
+
+**Out of Scope (follow-up plan):**
+- AR model full training (~30h GPU)
+- Generation evaluation (FID/COV/MMD)
+- Paper writing
+
 ---
 
 ## File Structure
@@ -1874,7 +1886,49 @@ Features:
 
 ---
 
-### Task 10: Evaluation and Visualization
+### Task 10: Uniform Baseline Training
+
+**Files:**
+- Use existing: `scripts/train.py` or `scripts/train_rvq.py`
+
+- [ ] **Step 1: Train uniform 512 baseline**
+
+```bash
+# Train uniform baseline with K=512
+python scripts/train.py \
+    --data data/patches/full \
+    --output data/checkpoints/uniform_512 \
+    --codebook-size 512 \
+    --epochs 200 \
+    --device cuda
+```
+
+- [ ] **Step 2: Train uniform 1024 upper bound (optional)**
+
+```bash
+# Train uniform upper bound with K=1024
+python scripts/train.py \
+    --data data/patches/full \
+    --output data/checkpoints/uniform_1024 \
+    --codebook-size 1024 \
+    --epochs 200 \
+    --device cuda
+```
+
+- [ ] **Step 3: Commit checkpoint locations**
+
+Document checkpoint paths in `data/checkpoints/checkpoint_manifest.json`:
+```json
+{
+    "curvature_512": "data/checkpoints/curvature_vqvae/checkpoint_final.pt",
+    "uniform_512": "data/checkpoints/uniform_512/checkpoint_final.pt",
+    "uniform_1024": "data/checkpoints/uniform_1024/checkpoint_final.pt"
+}
+```
+
+---
+
+### Task 11: Reconstruction Evaluation
 
 **Files:**
 - Create: `scripts/evaluate_curvature_vqvae.py`
@@ -2052,9 +2106,9 @@ Reports CD, NC, F-Score, and codebook utilization."
 | Phase 2: Theory Analysis | 4 (Task 3-6) | ~10 hours |
 | Phase 3: Curvature-Aware Model | 1 (Task 7) | ~4 hours |
 | Phase 4: Lean4 Formalization | 1 (Task 8) | ~2 weeks (setup) |
-| Phase 5: Training Scripts | 2 (Task 9-10) | ~4 hours |
+| Phase 5: Training & Evaluation | 3 (Task 9-11) | ~6 hours |
 
-**Total**: 10 tasks, ~3-4 weeks (including Lean4 setup)
+**Total**: 11 tasks, ~3-4 weeks (including Lean4 setup)
 
 ### Dependencies
 
@@ -2072,7 +2126,9 @@ Task 3 (Power Law) ────> Task 4 (RD Experiment)
                                        v
 Task 8 (Lean4) ───────────────────────────────────> Paper writing
 
-Task 9 (Training) ────> Task 10 (Evaluation)
+Task 9 (Curvature Training) ──┐
+                               ├──> Task 11 (Evaluation)
+Task 10 (Baseline Training) ──┘
 ```
 
 ### Success Criteria
@@ -2083,4 +2139,4 @@ Task 9 (Training) ────> Task 10 (Evaluation)
 | C2: Power law fit | R² > 0.9 on Zipf plot |
 | C3: Lean4 proof | `lake build` succeeds |
 | C4: Curvature-aware > baseline | CD_curvature_512 < CD_uniform_512 |
-| C5: Generation quality | FID within 2× of SOTA |
+| C5: Generation quality | Deferred to follow-up plan (AR model training required) |
