@@ -27,6 +27,17 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger(__name__)
 
 
+def cleanup_objaverse_cache(objects: dict[str, str | None]):
+    """Delete downloaded Objaverse GLBs using the actual returned paths."""
+    for glb_path in objects.values():
+        if glb_path is None:
+            continue
+        try:
+            Path(glb_path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
 def process_batch(
     batch_idx: int,
     uids: list[str],
@@ -93,15 +104,7 @@ def process_batch(
         df.write_huggingface(hf_repo, io_config=io_config)
 
     # Cleanup objaverse caches
-    objaverse_cache = Path.home() / ".objaverse" / "hf-objaverse-v1" / "glbs"
-    if objaverse_cache.exists():
-        for uid in uids:
-            uid_file = objaverse_cache / uid[:2] / f"{uid}.glb"
-            if uid_file.exists():
-                try:
-                    uid_file.unlink()
-                except Exception:
-                    pass
+    cleanup_objaverse_cache(objects)
     hf_cache = Path.home() / ".cache" / "huggingface" / "hub"
     for cache_dir in hf_cache.glob("models--allenai--objaverse*"):
         shutil.rmtree(cache_dir, ignore_errors=True)
