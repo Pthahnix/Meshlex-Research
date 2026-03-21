@@ -17,6 +17,13 @@ context/                           # 研究上下文文档（按时间顺序）
 ├── 22_final_report.md             # v1 最终报告
 ├── 23_gap_analysis_graph_tokenization.md  # Graph Tokenization 分析
 ├── 24_meshlex_hmt_proposal.md     # HMT 提案
+├── 25_patchdiffusion_competitive_landscape.md  # PatchDiffusion 竞品分析 [innovation-brainstorm]
+├── 26_patchdiffusion_competitive_landscape.md  # MDLM 竞品分析 [innovation-brainstorm]
+├── analysis/                      # 理论驱动研究分析 [theory-driven-design]
+│   ├── 01_theory_driven_literature_survey.md   # 14 篇论文 survey
+│   ├── 02_theory_driven_gap_analysis.md        # Gap 分析
+│   ├── 03_theory_driven_idea_generation.md     # Idea 生成
+│   └── 04_theory_driven_research_review.md     # 研究评审
 ├── material/                      # 10 篇核心论文的分析摘要
 └── paper/                         # 300+ 篇论文的 markdown 原文
 
@@ -24,12 +31,16 @@ docs/superpowers/
 ├── specs/
 │   ├── 2026-03-18-meshlex-v2-design.md            # v2 完整设计文档
 │   ├── 2026-03-19-assembly-fix-full-retrain-design.md  # Assembly fix + full retrain spec
-│   └── 2026-03-20-daft-dataset-pipeline-design.md # Daft dataset pipeline spec
+│   ├── 2026-03-20-daft-dataset-pipeline-design.md # Daft dataset pipeline spec
+│   ├── 2026-03-20-meshlex-theory-driven-design.md # 理论驱动设计 [theory-driven-design]
+│   └── 2026-03-21-patchdiffusion-design.md        # PatchDiffusion 设计 [innovation-brainstorm]
 └── plans/
     ├── 2026-03-18-meshlex-v2-implementation.md    # v2 13-task 实现计划
     ├── 2026-03-19-ar-loss-fix-implementation.md   # AR v2 fix plan (7 tasks)
     ├── 2026-03-19-dataset-streaming-pipeline.md   # Dataset pipeline plan (superseded)
-    └── 2026-03-20-daft-dataset-pipeline.md        # Daft dataset pipeline plan (active)
+    ├── 2026-03-20-daft-dataset-pipeline.md        # Daft dataset pipeline plan (active)
+    ├── 2026-03-20-meshlex-theory-driven-implementation.md  # 理论驱动实现 [theory-driven-design]
+    └── 2026-03-21-patchdiffusion-implementation.md # PatchDiffusion 实现 [innovation-brainstorm]
 
 src/                               # 核心代码
 ├── data_prep.py                   # Mesh 加载、降面、归一化
@@ -122,7 +133,7 @@ results/                           # 实验结果 (committed)
 - **命名策略**：避开 "BPE for Mesh"（被 FreeMesh ICML 2025 占用），使用 "MeshLex"
 - **差异化定位**：vs MeshMosaic（我们是 codebook 选取，不是逐 face 生成）；vs FACE（我们是 per-patch，不是 per-face）
 
-## Current Status (2026-03-20)
+## Current Status (2026-03-21)
 
 ### v1 可行性验证 — COMPLETE (4/4 STRONG GO)
 
@@ -140,12 +151,13 @@ results/                           # 实验结果 (committed)
 | Phase 1 | RVQ 训练 | COMPLETE | 200 epochs, loss 0.177, util 100% |
 | Phase 3 | AR 训练 | COMPLETE (v2) | v1: loss 5.41 (87.3M params, 太大) → v2: loss 1.48, ppl 4.4 (20.4M params) |
 | Phase 4 | Generation Pipeline | COMPLETE | 40 meshes generated, surface recon via Ball Pivoting |
+| Phase D-1 | Objaverse Streaming | **COMPLETE** | 93 batches, 32,136 OK / 14,364 fail, 4,619,061 patches |
 
 **当前进行中:**
 
 | Phase | 内容 | 状态 | 备注 |
 |-------|------|------|------|
-| Phase D | 统一数据集 (Daft pipeline) | IN PROGRESS | Objaverse-LVIS 46K + ShapeNet 51K → HF Parquet |
+| Phase D-2 | ShapeNet Streaming | IN PROGRESS | 18/55 categories (on RunPod) |
 
 **待完成:**
 
@@ -155,6 +167,25 @@ results/                           # 实验结果 (committed)
 | Phase B | PCA + Rotation Tokens | PENDING | 需 Phase D 数据集 |
 | Phase C | No-PCA baseline | PENDING | 需 Phase D 数据集 |
 | Phase E | Ablation comparison | PENDING | 需 Phase B + C |
+
+### 研究新方向探索 — BRAINSTORMING (未合并到 main)
+
+两个分支正在探索后续论文方向：
+
+**Branch: `theory-driven-design`** — 理论驱动设计
+- 核心假说：Mesh patch token 频率遵循重尾分布（幂律或对数正态），来源于微分几何（Gauss-Bonnet）
+- 5 个贡献：(C1) 首次 3D mesh token 分布分析, (C2) 几何解释, (C3) Lean4 形式化证明, (C4) 曲率感知非均匀 codebook, (C5) 端到端系统
+- 文献调研完成：14 篇论文，关键发现——图像 token → 对数正态, 时间序列 → Zipf, 3D mesh → 未知（我们的 opening）
+- Spec + Plan 已写，skeleton 代码已有
+- 目标：NeurIPS 2027 (Type R, theory-heavy)
+
+**Branch: `innovation-brainstorm`** — PatchDiffusion（包含 theory-driven 全部内容 + 额外）
+- 核心创新：首个 patch-level masked discrete diffusion mesh 生成方法
+- 在 token 粒度 × 生成范式 的 2D 空间中占据完全空白格
+- 3 种变体：Pure MDLM / Block Diffusion / Hierarchical RVQ Diffusion
+- 竞品分析完成：TSSR 是唯一 discrete diffusion mesh 方法，但 per-face（~万级 token），我们 per-patch（~130 token）
+- Spec + Plan 已写
+- 目标：CCF-A (CVPR / NeurIPS / ICLR)
 
 ### v2 Checkpoints (HF: Pthahnix/MeshLex-Research)
 
