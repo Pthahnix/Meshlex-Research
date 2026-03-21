@@ -1,19 +1,19 @@
 # Dataset Pipeline Progress Report — ShapeNet Phase
 
-**Generated:** 2026-03-21 06:00 UTC
+**Generated:** 2026-03-21 06:18 UTC
 
 ## Overall Status
 - **Phase**: ShapeNet streaming (Phase D-2)
 - **Pipeline PID**: 223161 (running)
-- **Categories completed**: 13 / 55 (24%) — 11 OK, 2 errors
-- **Currently processing**: bus (02924116) — 939 models
+- **Categories completed**: 14 / 55 (25%) — 12 OK, 2 errors
+- **Currently processing**: cabinet (02933112)
 
 ## Stats
-- Meshes OK: 6,079
-- Meshes fail: 2,616
-- Success rate: 69.9%
-- Total patches: 1,089,655
-- Avg patches/mesh: 179.2
+- Meshes OK: 6,483
+- Meshes fail: 3,151
+- Success rate: 67.3%
+- Total patches: 1,204,789
+- Avg patches/mesh: 185.8
 
 ## Per-Category Breakdown
 | Category | Synset | OK | Fail | Patches |
@@ -25,27 +25,25 @@
 | bathtub | 02808440 | 803 | 53 | 87,883 |
 | bed | 02818832 | 213 | 20 | 33,632 |
 | bench | 02828884 | 1,503 | 310 | 251,431 |
-| bicycle | 02834778 | — | — | ERROR: 404 (zip not on HF) |
+| bicycle | 02834778 | — | — | ERROR: 404 |
 | birdhouse | 02843684 | 72 | 1 | 3,724 |
-| boat | 02858304 | — | — | ERROR: 404 (zip not on HF) |
+| boat | 02858304 | — | — | ERROR: 404 |
 | bookshelf | 02871439 | 389 | 63 | 29,181 |
 | bottle | 02876657 | 491 | 7 | 36,917 |
 | bowl | 02880940 | 182 | 4 | 11,709 |
+| bus | 02924116 | 404 | 535 | 115,134 |
 
 ## Disk Usage
-- Used: 17GB / 80GB (21%)
-- Free: 64GB
+- Used: 15GB / 80GB (19%)
+- Free: 66GB
 
 ## Latest Log
 ```
-[bowl] Done: 182 ok, 4 fail, 11709 patches
-[bus] Downloading category 02924116.zip...
-[bus] Downloaded + extracted in 35s
-[bus] Found 939 models
+[cabinet] Writing sub-batch (61234 patches)...
 ```
 
 ## Notes
-- 2 categories (bicycle, boat) returned 404 — their zips are not available on HF ShapeNet repo.
-- airplane had high fail rate (51.6%) due to complex/non-manifold meshes; other categories ~90%+ success.
-- Pipeline started at 04:35 UTC (~85 min elapsed).
+- 2 categories (bicycle, boat) returned 404 — zips not on HF ShapeNet repo.
+- bus had high fail rate (57%) similar to airplane — complex vehicle meshes.
+- Pipeline started at 04:35 UTC (~103 min elapsed).
 - Objaverse phase (D-1) completed earlier: 93 batches, 32,136 OK, 4,619,061 patches.
