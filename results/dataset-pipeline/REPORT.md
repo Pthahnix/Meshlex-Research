@@ -1,25 +1,29 @@
-# Dataset Pipeline Progress Report
+# Dataset Pipeline Progress Report — ShapeNet Phase
 
-**Generated:** 2026-03-21 04:15:34
+**Generated:** 2026-03-21 04:48 UTC
 
-## Overall
-- Total meshes processed: 32136 OK / 14364 fail
-- Total patches: 4,619,061
+## Overall Status
+- **Phase**: ShapeNet streaming (Phase D-2)
+- **Pipeline PID**: 223161 (running)
+- **Categories completed**: 0 / 55
+- **Currently processing**: airplane (02691156) — 4045 models
 
-## Objaverse-LVIS (Phase 1)
-- Batches: 93 / 93 completed
-- Meshes: 32136 OK / 14364 fail
-- Success rate: 69.1%
-- Patches: 4,619,061
-- Avg patches/mesh: 143.7
-
-## ShapeNet (Phase 2)
-- Batches: 0 completed
-- Meshes: 0 OK / 0 fail
-- Success rate: 0%
-- Patches: 0
+## Stats
+- Meshes OK: 0 (still processing first category)
+- Meshes fail: 0
+- Total patches: 0
 
 ## Disk Usage
-- Total: 80GB
-- Used: 14GB
-- Free: 65GB
+- Used: 28GB / 80GB (35%)
+- Free: 53GB
+
+## Latest Log
+```
+[airplane] Downloaded + extracted in 91s
+[airplane] Found 4045 models
+```
+
+## Notes
+- Airplane is the largest ShapeNet category (~4045 models), first-category processing is expected to take longer.
+- Pipeline started at 04:35 UTC. Sub-batches of 500 meshes are written to HF as they complete.
+- Objaverse phase (D-1) completed earlier: 93 batches, 32,136 OK, 4,619,061 patches.
