@@ -665,12 +665,19 @@ from src.diffusion_dataset import DiffusionPatchDataset
 
 
 def create_mock_sequence_file(path: Path, n_meshes: int = 10, max_patches: int = 100):
-    """Create mock NPZ files for testing."""
+    """Create mock NPZ files matching encode_sequences.py output format.
+
+    Format matches what encode_sequences.py produces:
+    - centroids: (N, 3) float32
+    - scales: (N,) float32
+    - tokens: (N, 3) int64 for RVQ mode
+    """
     for i in range(n_meshes):
         n_patches = np.random.randint(20, max_patches)
-        # RVQ mode: 7 tokens per patch (pos_x, pos_y, pos_z, scale, tok_L1, tok_L2, tok_L3)
-        tokens = np.random.randint(0, 2000, (n_patches, 7))
-        np.savez(path / f"mesh_{i:04d}.npz", tokens=tokens)
+        centroids = np.random.randn(n_patches, 3).astype(np.float32)
+        scales = np.random.rand(n_patches).astype(np.float32)
+        tokens = np.random.randint(0, 1024, (n_patches, 3))  # RVQ: 3 codebook indices
+        np.savez(path / f"mesh_{i:04d}_sequence.npz", centroids=centroids, scales=scales, tokens=tokens)
 
 
 def test_diffusion_dataset_length():
@@ -704,11 +711,17 @@ Expected: FAIL with "ModuleNotFoundError: No module named 'src.diffusion_dataset
 
 ```python
 # src/diffusion_dataset.py
-"""Dataset for masked diffusion training on patch token sequences."""
+"""Dataset for masked diffusion training on patch token sequences.
+
+Loads NPZ files produced by encode_sequences.py and converts them to
+flat token sequences using patches_to_token_sequence.
+"""
 import torch
 import numpy as np
 from pathlib import Path
 from torch.utils.data import Dataset
+
+from src.patch_sequence import patches_to_token_sequence
 
 
 class DiffusionPatchDataset(Dataset):
@@ -717,10 +730,17 @@ class DiffusionPatchDataset(Dataset):
     Unlike MeshSequenceDataset (AR), this returns the full sequence without
     separating input/target — masking is applied dynamically during training.
 
+    Loads NPZ files with format:
+    - centroids: (N, 3) float32
+    - scales: (N,) float32
+    - tokens: (N,) for simvq or (N, 3) for rvq
+
     Args:
-        sequence_dir: directory containing NPZ files with token sequences.
+        sequence_dir: directory containing NPZ files from encode_sequences.py.
         mode: "rvq" (7 tokens/patch) or "simvq" (5 tokens/patch).
         max_seq_len: maximum sequence length (truncate if longer).
+        n_pos_bins: position quantization bins (must match AR training).
+        n_scale_bins: scale quantization bins (must match AR training).
     """
 
     def __init__(
@@ -728,10 +748,14 @@ class DiffusionPatchDataset(Dataset):
         sequence_dir: str | Path,
         mode: str = "rvq",
         max_seq_len: int = 1024,
+        n_pos_bins: int = 256,
+        n_scale_bins: int = 64,
     ):
         self.sequence_dir = Path(sequence_dir)
         self.mode = mode
         self.max_seq_len = max_seq_len
+        self.n_pos_bins = n_pos_bins
+        self.n_scale_bins = n_scale_bins
         self.tokens_per_patch = 7 if mode == "rvq" else 5
 
         self.files = sorted(self.sequence_dir.glob("*.npz"))
@@ -748,14 +772,25 @@ class DiffusionPatchDataset(Dataset):
             (seq_len,) int64 tensor where seq_len ≤ max_seq_len.
         """
         data = np.load(self.files[idx])
-        tokens = data["tokens"]  # (n_patches, tokens_per_patch)
+        centroids = data["centroids"]  # (N, 3)
+        scales = data["scales"]  # (N,)
+        tokens = data["tokens"]  # (N, 3) for rvq, (N,) for simvq
 
-        # Flatten and truncate
-        flat = tokens.reshape(-1)  # (n_patches * tokens_per_patch,)
+        # Convert to flat token sequence using same logic as AR training
+        flat = patches_to_token_sequence(
+            centroids=torch.from_numpy(centroids),
+            scales=torch.from_numpy(scales),
+            codebook_tokens=torch.from_numpy(tokens),
+            mode=self.mode,
+            n_pos_bins=self.n_pos_bins,
+            n_scale_bins=self.n_scale_bins,
+        )  # (N * tokens_per_patch,)
+
+        # Truncate if needed
         if len(flat) > self.max_seq_len:
             flat = flat[: self.max_seq_len]
 
-        return torch.tensor(flat, dtype=torch.long)
+        return flat
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -767,7 +802,7 @@ Expected: PASS (2 tests)
 
 ```bash
 git add src/diffusion_dataset.py tests/test_diffusion_dataset.py
-git commit -m "feat(mdlm): add DiffusionPatchDataset for diffusion training"
+git commit -m "feat(mdlm): add DiffusionPatchDataset using encode_sequences.py format"
 git push origin innovation-brainstorm
 ```
 
