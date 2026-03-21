@@ -8,6 +8,9 @@ Usage:
         --epochs 200 --batch_size 256
 """
 import argparse
+import json
+from pathlib import Path
+
 import torch
 from torch.utils.data import ConcatDataset
 
@@ -30,17 +33,20 @@ def main():
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--checkpoint_dir", type=str, default="data/checkpoints/rvq")
     parser.add_argument("--resume", type=str, default=None)
+    parser.add_argument("--nopca", action="store_true", help="Train on non-PCA-normalized vertices")
+    parser.add_argument("--vq_method", choices=["simvq", "vanilla", "ema"], default="simvq",
+                        help="VQ codebook method")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    train_datasets = [PatchGraphDataset(d) for d in args.train_dirs]
+    train_datasets = [PatchGraphDataset(d, use_nopca=args.nopca) for d in args.train_dirs]
     train_dataset = ConcatDataset(train_datasets)
     print(f"Training patches: {len(train_dataset)}")
 
     val_dataset = None
     if args.val_dirs:
-        val_datasets = [PatchGraphDataset(d) for d in args.val_dirs]
+        val_datasets = [PatchGraphDataset(d, use_nopca=args.nopca) for d in args.val_dirs]
         val_dataset = ConcatDataset(val_datasets)
         print(f"Validation patches: {len(val_dataset)}")
 
@@ -50,6 +56,7 @@ def main():
         embed_dim=args.embed_dim,
         hidden_dim=args.hidden_dim,
         num_kv_tokens=args.num_kv_tokens,
+        vq_method=args.vq_method,
     )
 
     n_params = sum(p.numel() for p in model.parameters())
@@ -76,6 +83,28 @@ def main():
         device=device,
         resume_checkpoint=ckpt_data,
     )
+
+    # Save training config
+    config = {
+        "codebook_size": args.codebook_size,
+        "n_levels": args.n_levels,
+        "embed_dim": args.embed_dim,
+        "hidden_dim": args.hidden_dim,
+        "num_kv_tokens": args.num_kv_tokens,
+        "batch_size": args.batch_size,
+        "epochs": args.epochs,
+        "lr": args.lr,
+        "nopca": args.nopca,
+        "vq_method": args.vq_method,
+        "train_dirs": args.train_dirs,
+        "val_dirs": args.val_dirs,
+    }
+    config_path = Path(args.checkpoint_dir) / "config.json"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(config_path, "w") as f:
+        json.dump(config, f, indent=2)
+    print(f"Config saved to {config_path}")
+
     trainer.train()
 
 

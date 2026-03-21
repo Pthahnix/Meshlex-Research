@@ -27,10 +27,11 @@ class MeshLexRVQVAE(nn.Module):
         lambda_commit: float = 1.0,
         lambda_embed: float = 1.0,
         num_kv_tokens: int = 4,
+        vq_method: str = "simvq",
     ):
         super().__init__()
         self.encoder = PatchEncoder(in_dim, hidden_dim, embed_dim)
-        self.rvq = ResidualVQ(n_levels=n_levels, K=codebook_size, dim=embed_dim)
+        self.rvq = ResidualVQ(n_levels=n_levels, K=codebook_size, dim=embed_dim, vq_method=vq_method)
         self.decoder = PatchDecoder(embed_dim, max_vertices, num_kv_tokens=num_kv_tokens)
         # Expose first-level codebook for Trainer compatibility
         # (Trainer accesses model.codebook.K, .init_from_z, .get_quant_codebook, etc.)

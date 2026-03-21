@@ -5,22 +5,113 @@ import torch.nn as nn
 from src.model import SimVQCodebook
 
 
+class VanillaVQ(nn.Module):
+    """Standard VQ with straight-through gradient estimator."""
+
+    def __init__(self, K: int = 1024, dim: int = 128):
+        super().__init__()
+        self.K = K
+        self.dim = dim
+        self.codebook = nn.Embedding(K, dim)
+        nn.init.uniform_(self.codebook.weight, -1 / K, 1 / K)
+        # Identity linear for compatibility with SimVQCodebook interface
+        self.linear = nn.Linear(dim, dim, bias=False)
+        nn.init.eye_(self.linear.weight)
+        self.linear.weight.requires_grad = False  # not used for VanillaVQ
+
+    def forward(self, z):
+        dists = torch.cdist(z.unsqueeze(0), self.codebook.weight.unsqueeze(0)).squeeze(0)
+        indices = dists.argmin(dim=-1)
+        z_q = self.codebook(indices)
+        z_q = z + (z_q - z).detach()  # straight-through
+        return z_q, indices
+
+    def compute_loss(self, z, quantized_st, indices):
+        quantized = self.codebook(indices)
+        commit_loss = ((z - quantized.detach()) ** 2).mean()
+        embed_loss = ((z.detach() - quantized) ** 2).mean()
+        return commit_loss, embed_loss
+
+    def get_quant_codebook(self):
+        return self.codebook.weight
+
+    @torch.no_grad()
+    def init_from_z(self, centroids):
+        self.codebook.weight.data.copy_(centroids)
+
+
+class EMAVQ(nn.Module):
+    """EMA-updated VQ codebook with straight-through gradient."""
+
+    def __init__(self, K: int = 1024, dim: int = 128, decay: float = 0.99, eps: float = 1e-5):
+        super().__init__()
+        self.K = K
+        self.dim = dim
+        self.decay = decay
+        self.eps = eps
+        self.codebook = nn.Embedding(K, dim)
+        nn.init.uniform_(self.codebook.weight, -1 / K, 1 / K)
+        # Identity linear for compatibility with SimVQCodebook interface
+        self.linear = nn.Linear(dim, dim, bias=False)
+        nn.init.eye_(self.linear.weight)
+        self.linear.weight.requires_grad = False  # not used for EMAVQ
+        self.register_buffer('ema_count', torch.zeros(K))
+        self.register_buffer('ema_weight', self.codebook.weight.clone())
+
+    def forward(self, z):
+        dists = torch.cdist(z.unsqueeze(0), self.codebook.weight.unsqueeze(0)).squeeze(0)
+        indices = dists.argmin(dim=-1)
+        z_q = self.codebook(indices)
+
+        if self.training:
+            one_hot = torch.zeros(z.size(0), self.K, device=z.device)
+            one_hot.scatter_(1, indices.unsqueeze(1), 1)
+            self.ema_count = self.decay * self.ema_count + (1 - self.decay) * one_hot.sum(0)
+            self.ema_weight = self.decay * self.ema_weight + (1 - self.decay) * (one_hot.T @ z)
+            n = self.ema_count.sum()
+            count = (self.ema_count + self.eps) / (n + self.K * self.eps) * n
+            self.codebook.weight.data = self.ema_weight / count.unsqueeze(1)
+
+        z_q = z + (z_q - z).detach()  # straight-through
+        return z_q, indices
+
+    def compute_loss(self, z, quantized_st, indices):
+        quantized = self.codebook(indices)
+        commit_loss = ((z - quantized.detach()) ** 2).mean()
+        embed_loss = ((z.detach() - quantized) ** 2).mean()
+        return commit_loss, embed_loss
+
+    def get_quant_codebook(self):
+        return self.codebook.weight
+
+    @torch.no_grad()
+    def init_from_z(self, centroids):
+        self.codebook.weight.data.copy_(centroids)
+        self.ema_weight.copy_(centroids)
+
+
 class ResidualVQ(nn.Module):
     """Multi-level residual vector quantization.
 
     Each level quantizes the residual from the previous level.
-    All levels use SimVQCodebook with use_rotation=False.
+    Supports SimVQ (default), VanillaVQ, and EMAVQ codebook methods.
     """
 
-    def __init__(self, n_levels: int = 3, K: int = 1024, dim: int = 128):
+    def __init__(self, n_levels: int = 3, K: int = 1024, dim: int = 128, vq_method: str = "simvq"):
         super().__init__()
         self.n_levels = n_levels
         self.K = K
         self.dim = dim
-        self.levels = nn.ModuleList([
-            SimVQCodebook(K=K, dim=dim, use_rotation=False)
-            for _ in range(n_levels)
-        ])
+        self.vq_method = vq_method
+        levels = []
+        for _ in range(n_levels):
+            if vq_method == "vanilla":
+                levels.append(VanillaVQ(K=K, dim=dim))
+            elif vq_method == "ema":
+                levels.append(EMAVQ(K=K, dim=dim))
+            else:
+                levels.append(SimVQCodebook(K=K, dim=dim, use_rotation=False))
+        self.levels = nn.ModuleList(levels)
 
     def forward(self, z: torch.Tensor):
         """Iterative residual quantization.

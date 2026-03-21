@@ -34,6 +34,8 @@ def main():
                         help="Directory to save per-mesh sequence NPZs")
     parser.add_argument("--mode", choices=["simvq", "rvq"], default="rvq")
     parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--nopca", action="store_true",
+                        help="Use non-PCA-normalized vertices for encoding")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -68,7 +70,7 @@ def main():
             mesh_groups.setdefault(mesh_id, []).append(f)
 
         # Load dataset and encode all patches
-        dataset = PatchGraphDataset(str(patch_dir))
+        dataset = PatchGraphDataset(str(patch_dir), use_nopca=args.nopca)
         loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
 
         all_tokens = []
