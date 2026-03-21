@@ -164,11 +164,16 @@ def decode_sequence_to_patches(sequence, vqvae, device, n_pos_bins=256, n_scale_
 
 
 def decode_training_sequence(seq_path, vqvae, device):
-    """Decode a training sequence NPZ (centroids, scales, tokens) to world-space vertices."""
+    """Decode a training sequence NPZ (centroids, scales, tokens, principal_axes) to world-space vertices."""
     data = np.load(seq_path)
     centroids = data["centroids"]  # (N, 3)
     scales = data["scales"]        # (N,)
     tokens = data["tokens"]        # (N, 3)
+    # Load PCA axes if available (for correct inverse rotation)
+    if "principal_axes" in data:
+        pca_axes = data["principal_axes"]  # (N, 3, 3) — Vt from SVD
+    else:
+        pca_axes = None
 
     all_world_verts = []
     for i in range(len(centroids)):
@@ -178,7 +183,14 @@ def decode_training_sequence(seq_path, vqvae, device):
             n_verts = torch.tensor([30], device=device)
             local_verts = vqvae.decoder(z_hat, n_verts)[0, :30].cpu().numpy()
 
-        world_verts = local_verts * max(scales[i], 0.01) + centroids[i]
+        # Inverse PCA transform: scale → rotate → translate
+        aligned = local_verts * max(scales[i], 0.01)
+        if pca_axes is not None:
+            # local_verts = centered @ Vt.T / scale, so centered = aligned @ Vt
+            centered = aligned @ pca_axes[i]
+        else:
+            centered = aligned
+        world_verts = centered + centroids[i]
         all_world_verts.append(world_verts)
 
     return all_world_verts

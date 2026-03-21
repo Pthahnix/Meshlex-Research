@@ -1,0 +1,9 @@
+{
+  "n_meshes_analyzed": 434,
+  "mean_spearman": -0.0356,
+  "median_spearman": -0.0287,
+  "std_spearman": 0.0733,
+  "frac_negative": 0.7258,
+  "n_distance_bins": 18,
+  "verdict": "WEAK/NONE"
+}

@@ -1,0 +1,52 @@
+{
+  "L1": {
+    "better_fit": "Lognormal",
+    "zipf_alpha": 0.3602,
+    "zipf_r_squared": 0.7361,
+    "zipf_ks": 0.1572,
+    "lognorm_ks": 0.0524,
+    "lognorm_sigma": 0.4136,
+    "lognorm_mu": 5.4052,
+    "entropy_bits": 9.8907,
+    "entropy_pct": 98.91,
+    "gini": 0.2147,
+    "active_codes": 1024,
+    "total_tokens": 246792,
+    "tail_type": "Moderately heavy-tailed"
+  },
+  "L2": {
+    "better_fit": "Lognormal",
+    "zipf_alpha": 0.4947,
+    "zipf_r_squared": 0.9051,
+    "zipf_ks": 0.125,
+    "lognorm_ks": 0.056,
+    "lognorm_sigma": 0.5123,
+    "lognorm_mu": 5.3384,
+    "entropy_bits": 9.7627,
+    "entropy_pct": 97.63,
+    "gini": 0.2995,
+    "active_codes": 1024,
+    "total_tokens": 246792,
+    "tail_type": "Moderately heavy-tailed"
+  },
+  "L3": {
+    "better_fit": "Lognormal",
+    "zipf_alpha": 0.3394,
+    "zipf_r_squared": 0.8746,
+    "zipf_ks": 0.1582,
+    "lognorm_ks": 0.0354,
+    "lognorm_sigma": 0.3576,
+    "lognorm_mu": 5.4183,
+    "entropy_bits": 9.8999,
+    "entropy_pct": 99.0,
+    "gini": 0.2037,
+    "active_codes": 1024,
+    "total_tokens": 246792,
+    "tail_type": "Moderately heavy-tailed"
+  },
+  "_conclusion": {
+    "avg_zipf_alpha": 0.3981,
+    "avg_zipf_r_squared": 0.8386,
+    "verdict": "MODERATE POWER-LAW: Mesh tokens show heavy-tailed behavior. Theory-driven direction viable."
+  }
+}

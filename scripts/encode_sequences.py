@@ -95,23 +95,30 @@ def main():
             n = len(patch_files)
             mesh_tokens = tokens[idx:idx + n]
 
-            # Load centroid and scale from each patch NPZ
+            # Load centroid, scale, and PCA axes from each patch NPZ
             centroids = []
             scales = []
+            pca_axes = []
             for pf in sorted(patch_files):
                 data = np.load(str(pf))
                 centroids.append(data["centroid"])
                 scale_val = data["scale"]
                 scales.append(float(scale_val[0]) if scale_val.ndim > 0 else float(scale_val))
+                if "principal_axes" in data:
+                    pca_axes.append(data["principal_axes"])
+                else:
+                    pca_axes.append(np.eye(3, dtype=np.float32))
 
             mesh_centroids = np.array(centroids, dtype=np.float32)
             mesh_scales = np.array(scales, dtype=np.float32)
+            mesh_pca_axes = np.array(pca_axes, dtype=np.float32)  # (N, 3, 3)
             idx += n
 
             np.savez(out_path,
                      centroids=mesh_centroids,
                      scales=mesh_scales,
-                     tokens=mesh_tokens)
+                     tokens=mesh_tokens,
+                     principal_axes=mesh_pca_axes)
 
         gc.collect()
         torch.cuda.empty_cache()
