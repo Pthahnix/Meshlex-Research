@@ -20,6 +20,27 @@ source ~/.bashrc && export http_proxy=http://127.0.0.1:17892 https_proxy=http://
 - commit 粒度以"功能"为单位，非单个函数
 - 新增 `results/` 下的产出后，验证无误即立即将对应结果与相关脚本一起 commit 并 `git push`
 
+## Timeline 维护
+
+**每当完成一批任务（≥ 2 个 Task 或一个明显的工作节点）时：**
+
+1. 用 Python 查询当前设备时间：
+   ```python
+   from datetime import datetime; print(datetime.now())
+   ```
+2. 若距上次 Timeline 条目已跨越新的一天（UTC 日期变化），必须在 `main` 分支的 `README.md` 中追加当日条目：
+   ```
+   - **Day N (YYYY-MM-DD)**: 当日完成内容摘要（bullet 形式，覆盖关键实验结果、新增功能、重要决策）
+   ```
+3. 条目写完后立即 commit 并 push 到 main：
+   ```bash
+   git add README.md
+   git commit -m "docs: update README timeline Day N"
+   git push
+   ```
+
+> **提示**：README.md 在 main 分支，当前工作分支不同时，用 `git worktree add /tmp/meshlex-main main` 在独立目录操作，避免切换分支影响正在运行的训练进程。
+
 ## Checkpoint 备份（强制）
 
 - 每次训练完成后，必须立即上传 checkpoint 至 HF：`Pthahnix/MeshLex-Research`
@@ -166,11 +187,10 @@ git push
 
 当有明确规划好的 GPU 任务在等待执行时：
 
-- **每 10 分钟自动检查一次** GPU 1 和 GPU 2 的使用情况（`nvidia-smi`）
-- **GPU 0 永远不占用**，只使用 GPU 1 或 GPU 2
-- 一旦 GPU 1 或 GPU 2 有空闲（无进程占用），**立即启动排队中的任务**
-- 使用 `CUDA_VISIBLE_DEVICES=1` 或 `CUDA_VISIBLE_DEVICES=2` 指定具体卡
-- 两张卡都空闲时，优先使用 GPU 1
+- **每 10 分钟自动检查一次** 各 GPU 的使用情况（`nvidia-smi`）
+- 一旦有 GPU 空闲（无进程占用），**立即启动排队中的任务**
+- 使用 `CUDA_VISIBLE_DEVICES=<N>` 指定具体卡（0、1 或 2，视空闲情况）
+- 多张卡都空闲时，优先使用编号较小的空闲卡
 
 ### GPU 进程命名
 
