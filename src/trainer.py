@@ -364,8 +364,8 @@ class Trainer:
                 f"util {util:.1%} | lr {train_metrics['lr']:.2e} | {elapsed:.1f}s"
             )
 
-            # Checkpoint every 20 epochs
-            if (epoch + 1) % 20 == 0:
+            # Checkpoint every 3 epochs
+            if (epoch + 1) % 3 == 0:
                 self.save_checkpoint(epoch)
 
                 if util < 0.10 and epoch >= self.encoder_warmup_epochs:

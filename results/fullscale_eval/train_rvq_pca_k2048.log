@@ -1,0 +1,32 @@
+Training patches (mmap): 8487223 (chunk_size=200000)
+Validation patches (mmap): 2152038
+RVQ-VAE: 1,421,955 total, 635,523 trainable
+Codebook: 3 levels x K=2048
+  Chunked training: 8487223 samples, chunk_size=200000, 43 chunks/epoch
+Config saved to /data/pthahnix/MeshLex-Research/checkpoints/rvq_full_pca_k2048/config.json
+Encoder warmup: 2 epochs (recon only), then K-means init + full VQ training
+    chunk 10/43 done, loss 0.5596
+    chunk 20/43 done, loss 0.5337
+    chunk 30/43 done, loss 0.5136
+    chunk 40/43 done, loss 0.4798
+Epoch 000 [warmup] | loss 0.4765 | recon 0.4765 | commit 1.0141 | embed 1.0141 | util 6.9% | lr 2.08e-05 | 9126.7s
+    chunk 10/43 done, loss 0.3025
+    chunk 20/43 done, loss 0.2928
+    chunk 30/43 done, loss 0.2933
+    chunk 40/43 done, loss 0.2878
+  K-means codebook init: 326272 samples → 2048 clusters...
+  CW-centroid error: 0.0000, post-init utilization: 35.5%
+Epoch 001 [warmup] | loss 0.2861 | recon 0.2861 | commit 0.8858 | embed 0.8858 | util 23.4% | lr 4.06e-05 | 8912.9s
+    chunk 10/43 done, loss 0.3237
+    chunk 20/43 done, loss 0.3029
+    chunk 30/43 done, loss 0.2995
+    chunk 40/43 done, loss 0.2951
+  Dead code revival: replaced 29/2048 codes
+Epoch 002 | loss 0.2955 | recon 0.2457 | commit 0.0249 | embed 0.0249 | util 98.6% | lr 6.04e-05 | 8872.5s
+    chunk 10/43 done, loss 0.2755
+    chunk 20/43 done, loss 0.2755
+    chunk 30/43 done, loss 0.2779
+    chunk 40/43 done, loss 0.2799
+Epoch 003 | loss 0.2782 | recon 0.2247 | commit 0.0267 | embed 0.0267 | util 98.1% | lr 8.02e-05 | 9160.3s
+    chunk 10/43 done, loss 0.2498
+    chunk 20/43 done, loss 0.2551
