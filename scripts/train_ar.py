@@ -42,6 +42,8 @@ def main():
     parser.add_argument("--rotation", action="store_true",
                         help="Use 11-token rotation format (pos+scale+rot_quat+codebook)")
     parser.add_argument("--resume", type=str, default=None)
+    parser.add_argument("--stop_flag_file", type=str, default=None,
+                        help="Path to stop-flag file; exits gracefully after current epoch if file exists")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -175,7 +177,20 @@ def main():
 
         gc.collect()
 
-    # Final checkpoint
+        # Check stop flag (graceful GPU yield)
+        if args.stop_flag_file and Path(args.stop_flag_file).exists():
+            print(f"Stop flag detected ({args.stop_flag_file}), saving checkpoint and exiting...")
+            torch.save({
+                "epoch": epoch,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "scheduler_state_dict": scheduler.state_dict(),
+                "history": history,
+                "config": config,
+            }, ckpt_dir / f"checkpoint_epoch{epoch:03d}.pt")
+            with open(ckpt_dir / "training_history.json", "w") as f:
+                json.dump(history, f, indent=2)
+            return
     torch.save({
         "epoch": args.epochs - 1,
         "model_state_dict": model.state_dict(),
