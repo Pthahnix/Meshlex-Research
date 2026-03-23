@@ -68,3 +68,46 @@ Epoch 010 | loss 0.2264 | recon 0.1799 | commit 0.0233 | embed 0.0233 | util 97.
     chunk 10/43 done, loss 0.2230
     chunk 20/43 done, loss 0.2266
     chunk 30/43 done, loss 0.2264
+    chunk 40/43 done, loss 0.2299
+  Dead code revival: replaced 46/2048 codes
+Traceback (most recent call last):
+  File "/home/pthahnix/MeshLex-Research/scripts/train_rvq.py", line 196, in <module>
+    
+  File "/home/pthahnix/MeshLex-Research/scripts/train_rvq.py", line 192, in main
+    json.dump(config, f, indent=2)
+^^^^^^^^^^^^^^^
+  File "/home/pthahnix/MeshLex-Research/src/trainer.py", line 349, in train
+    t0 = time.time()
+                  ^^^
+  File "/home/pthahnix/.local/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pthahnix/MeshLex-Research/src/trainer.py", line 323, in evaluate
+    batch = batch.to(self.device)
+                 ^^^^^^^^^^^^^^^^
+  File "/home/pthahnix/.local/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pthahnix/.local/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pthahnix/MeshLex-Research/src/model_rvq.py", line 49, in forward
+    recon_loss = chamfer_distance(recon, gt_vertices, mask)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pthahnix/MeshLex-Research/src/losses.py", line 35, in chamfer_distance
+    total_cd += cd
+    ^^^^^^^^
+  File "/home/pthahnix/.local/lib/python3.12/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+RuntimeError: DataLoader worker (pid 3730536) is killed by signal: Terminated. 
+Training patches (mmap): 8487223 (chunk_size=200000)
+Validation patches (mmap): 2152038
+RVQ-VAE: 1,421,955 total, 635,523 trainable
+Codebook: 3 levels x K=2048
+  Chunked training: 8487223 samples, chunk_size=200000, 43 chunks/epoch
+Config saved to /data/pthahnix/MeshLex-Research/checkpoints/rvq_full_pca_k2048/config.json
+Encoder warmup: 2 epochs (recon only), then K-means init + full VQ training
+    chunk 10/43 done, loss 0.5543
+    chunk 20/43 done, loss 0.5447
+    chunk 30/43 done, loss 0.5256
+    chunk 40/43 done, loss 0.5037

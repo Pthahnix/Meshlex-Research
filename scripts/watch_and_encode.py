@@ -46,7 +46,7 @@ JOBS = [
         "encode_cfg": "pca_k512",
     },
     {
-        "pid": 3252000,
+        "pid": 3934532,
         "name": "PCA K=2048",
         "exp_name": "rvq_full_pca_k2048",
         "ckpt_dir": CKPT_BASE / "rvq_full_pca_k2048",

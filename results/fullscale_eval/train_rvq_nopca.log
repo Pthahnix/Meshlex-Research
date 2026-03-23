@@ -66,3 +66,10 @@ Epoch 009 | loss 0.2669 | recon 0.2086 | commit 0.0291 | embed 0.0291 | util 99.
 Epoch 010 | loss 0.2596 | recon 0.2045 | commit 0.0276 | embed 0.0276 | util 99.8% | lr 3.45e-05 | 10369.8s
     chunk 10/43 done, loss 0.2663
     chunk 20/43 done, loss 0.2655
+    chunk 30/43 done, loss 0.2653
+    chunk 40/43 done, loss 0.2598
+  Dead code revival: replaced 2/1024 codes
+Epoch 011 | loss 0.2602 | recon 0.2032 | commit 0.0285 | embed 0.0285 | util 99.8% | lr 2.06e-05 | 9959.7s
+    chunk 10/43 done, loss 0.2467
+    chunk 20/43 done, loss 0.2480
+    chunk 30/43 done, loss 0.2561

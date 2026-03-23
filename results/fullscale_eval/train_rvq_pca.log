@@ -52,3 +52,8 @@ Epoch 007 | loss 0.2464 | recon 0.1929 | commit 0.0267 | embed 0.0267 | util 98.
     chunk 10/43 done, loss 0.2419
     chunk 20/43 done, loss 0.2336
     chunk 30/43 done, loss 0.2332
+    chunk 40/43 done, loss 0.2348
+  Dead code revival: replaced 10/1024 codes
+Epoch 008 | loss 0.2341 | recon 0.1861 | commit 0.0240 | embed 0.0240 | util 99.0% | lr 6.55e-05 | 17441.3s
+    chunk 10/43 done, loss 0.2496
+    chunk 20/43 done, loss 0.2378
