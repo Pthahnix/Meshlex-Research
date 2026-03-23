@@ -5,3 +5,24 @@ Train: 4441, Val: 493
 Max seq len: 390, Codebook: 1024
 Epoch 1/200: train_loss=6.9747 val_loss=6.9102 val_acc=0.0028 val_ppl=1002.4 elapsed=34s
 Epoch 10/200: train_loss=6.9040 val_loss=6.9102 val_acc=0.0025 val_ppl=1002.4 elapsed=86s
+Epoch 20/200: train_loss=6.8070 val_loss=6.8125 val_acc=0.0047 val_ppl=909.1 elapsed=144s
+Epoch 30/200: train_loss=6.7621 val_loss=6.7617 val_acc=0.0060 val_ppl=864.1 elapsed=202s
+Epoch 40/200: train_loss=6.7095 val_loss=6.6914 val_acc=0.0071 val_ppl=805.5 elapsed=261s
+Epoch 50/200: train_loss=6.6725 val_loss=6.6719 val_acc=0.0077 val_ppl=789.9 elapsed=319s
+Epoch 60/200: train_loss=6.6533 val_loss=6.6406 val_acc=0.0082 val_ppl=765.6 elapsed=377s
+Epoch 70/200: train_loss=6.6372 val_loss=6.6523 val_acc=0.0081 val_ppl=774.6 elapsed=435s
+Epoch 80/200: train_loss=6.6224 val_loss=6.6484 val_acc=0.0074 val_ppl=771.6 elapsed=492s
+Epoch 90/200: train_loss=6.6036 val_loss=6.6172 val_acc=0.0094 val_ppl=747.8 elapsed=549s
+Epoch 100/200: train_loss=6.5831 val_loss=6.6133 val_acc=0.0101 val_ppl=744.9 elapsed=606s
+Epoch 110/200: train_loss=6.5775 val_loss=6.6094 val_acc=0.0107 val_ppl=742.0 elapsed=664s
+Epoch 120/200: train_loss=6.5579 val_loss=6.6016 val_acc=0.0095 val_ppl=736.2 elapsed=721s
+Epoch 130/200: train_loss=6.5533 val_loss=6.5977 val_acc=0.0103 val_ppl=733.4 elapsed=778s
+Epoch 140/200: train_loss=6.5335 val_loss=6.5898 val_acc=0.0105 val_ppl=727.7 elapsed=836s
+Epoch 150/200: train_loss=6.5224 val_loss=6.6133 val_acc=0.0105 val_ppl=744.9 elapsed=893s
+Epoch 160/200: train_loss=6.5150 val_loss=6.6094 val_acc=0.0106 val_ppl=742.0 elapsed=950s
+Epoch 170/200: train_loss=6.5149 val_loss=6.6133 val_acc=0.0099 val_ppl=744.9 elapsed=1008s
+Epoch 180/200: train_loss=6.5040 val_loss=6.6133 val_acc=0.0104 val_ppl=744.9 elapsed=1065s
+Epoch 190/200: train_loss=6.4959 val_loss=6.6094 val_acc=0.0108 val_ppl=742.0 elapsed=1122s
+Epoch 200/200: train_loss=6.5002 val_loss=6.6094 val_acc=0.0104 val_ppl=742.0 elapsed=1179s
+
+MDLM Training Complete: PPL=742.0, Acc=0.0104, Verdict=NOT_FEASIBLE

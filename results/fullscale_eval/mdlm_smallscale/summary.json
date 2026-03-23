@@ -1,0 +1,10 @@
+{
+  "n_params": 26735104,
+  "n_train": 4441,
+  "n_val": 493,
+  "final_train_loss": 6.500157567432948,
+  "final_val_loss": 6.609375,
+  "final_val_acc": 0.010385537177856024,
+  "final_val_ppl": 742.0191118159325,
+  "verdict": "NOT_FEASIBLE"
+}

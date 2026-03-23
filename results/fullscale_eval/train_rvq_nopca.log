@@ -38,3 +38,31 @@ Epoch 004 | loss 0.3035 | recon 0.2392 | commit 0.0322 | embed 0.0322 | util 99.
     chunk 40/43 done, loss 0.2819
   Dead code revival: replaced 1/1024 codes
 Epoch 005 | loss 0.2787 | recon 0.2277 | commit 0.0255 | embed 0.0255 | util 99.9% | lr 9.76e-05 | 10184.5s
+    chunk 10/43 done, loss 0.2754
+    chunk 20/43 done, loss 0.2739
+    chunk 30/43 done, loss 0.2699
+    chunk 40/43 done, loss 0.2722
+Epoch 006 | loss 0.2739 | recon 0.2225 | commit 0.0257 | embed 0.0257 | util 99.9% | lr 9.05e-05 | 10238.4s
+    chunk 10/43 done, loss 0.2826
+    chunk 20/43 done, loss 0.2790
+    chunk 30/43 done, loss 0.2715
+    chunk 40/43 done, loss 0.2725
+Epoch 007 | loss 0.2736 | recon 0.2172 | commit 0.0282 | embed 0.0282 | util 99.9% | lr 7.94e-05 | 10433.3s
+    chunk 10/43 done, loss 0.2648
+    chunk 20/43 done, loss 0.2630
+    chunk 30/43 done, loss 0.2712
+    chunk 40/43 done, loss 0.2734
+  Dead code revival: replaced 1/1024 codes
+Epoch 008 | loss 0.2739 | recon 0.2136 | commit 0.0302 | embed 0.0302 | util 99.9% | lr 6.55e-05 | 10334.7s
+    chunk 10/43 done, loss 0.2764
+    chunk 20/43 done, loss 0.2731
+    chunk 30/43 done, loss 0.2703
+    chunk 40/43 done, loss 0.2668
+Epoch 009 | loss 0.2669 | recon 0.2086 | commit 0.0291 | embed 0.0291 | util 99.8% | lr 5.00e-05 | 10368.7s
+    chunk 10/43 done, loss 0.2615
+    chunk 20/43 done, loss 0.2612
+    chunk 30/43 done, loss 0.2641
+    chunk 40/43 done, loss 0.2580
+Epoch 010 | loss 0.2596 | recon 0.2045 | commit 0.0276 | embed 0.0276 | util 99.8% | lr 3.45e-05 | 10369.8s
+    chunk 10/43 done, loss 0.2663
+    chunk 20/43 done, loss 0.2655
