@@ -1,11 +1,5 @@
 # MeshLex 项目规则
 
-## 监控汇报规范
-
-- 每次训练进度汇报，必须在开头注明当前时间
-- 时间格式：`YYYY-MM-DD HH:MM CST`（北京时间，UTC+8）
-- 设备时钟为 UTC，汇报时统一换算为 CST（+8h）
-
 ## Git 工作流
 
 - 完成一个完整功能模块就立即 commit
@@ -151,3 +145,114 @@ git push
 当一个主要 phase 完成后（如 Objaverse phase），必须：
 1. 在 `README.md` 的 Timeline 中添加当日条目
 2. 格式：`- **Day N (YYYY-MM-DD)**: 完成内容摘要`
+
+---
+
+## Checkpoint 保存机制（训练脚本设计规范）
+
+### 基本要求
+
+所有训练脚本必须实现以下 checkpoint 机制，缺一不可：
+
+**1. Sliding Window 式周期保存**
+
+- 每隔固定 epoch 数（推荐 `--save_every N`，默认 3）自动保存一次
+- 只保留最新的 `--keep_checkpoints K` 个存档点（默认 3），旧的自动删除
+- 文件命名：`checkpoint_epoch{N:03d}.pt`
+- 删除逻辑：每次保存后，按修改时间排序，删除最旧的超出数量的文件
+
+示例实现：
+```python
+def save_checkpoint(self, epoch):
+    path = self.checkpoint_dir / f"checkpoint_epoch{epoch:03d}.pt"
+    torch.save({"epoch": epoch, "model_state_dict": ..., "optimizer_state_dict": ..., "history": ...}, path)
+    # Sliding window 清理
+    ckpts = sorted(self.checkpoint_dir.glob("checkpoint_epoch*.pt"), key=lambda p: p.stat().st_mtime)
+    for old in ckpts[:-self.keep_checkpoints]:
+        old.unlink()
+```
+
+**2. 手动触发保存（信号机制）**
+
+训练脚本必须注册 `SIGUSR1` 信号处理器，收到信号后在当前 batch 结束时立即保存 checkpoint：
+
+```python
+import signal
+
+def _setup_signal_handler(self):
+    self._save_requested = False
+    signal.signal(signal.SIGUSR1, lambda sig, frame: setattr(self, '_save_requested', True))
+
+# 在每个 batch 结束后检查（或每个 epoch 末）：
+if self._save_requested:
+    self.save_checkpoint(epoch)
+    self._save_requested = False
+    print(f"[SIGUSR1] Manual checkpoint saved at epoch {epoch}")
+```
+
+触发方式：
+```bash
+kill -USR1 <训练进程PID>
+```
+
+**3. Stop Flag 优雅退出**
+
+支持 `--stop_flag_file` 参数。训练脚本在每个 epoch 末检查该文件是否存在，若存在则保存 checkpoint 后退出，以便 resume：
+
+```bash
+touch /tmp/stop_rvq_pca    # 触发优雅停止
+# 重启时：
+python3 scripts/train_xxx.py --resume checkpoints/xxx/checkpoint_epochXXX.pt ...
+```
+
+**注意**：新训练任务启动时，**必须**在命令行中加上 `--stop_flag_file /tmp/stop_<exp_name>`。
+
+---
+
+## 定时进度检测规范
+
+### 检测频率
+
+每 **30 分钟**进行一次进度检测（通过 cron 或 watch daemon 触发）。
+
+### 检测内容（每次必查）
+
+每次定时检测必须包含以下全部项目：
+
+```
+1. 进程存活性
+   - 确认训练 PID 全部存活（ps -p <PID>）
+   - 区分主进程 vs multiprocessing spawn 子进程（看 PPID）
+   - 若主进程已死：立即检查 checkpoint_final.pt 是否存在
+
+2. 训练进度
+   - 当前 epoch / 总 epoch
+   - 当前 epoch 内 chunk 进度（如 chunk 20/43）
+   - 最新 loss 值
+
+3. Checkpoint 状态（重要）
+   - 列出 checkpoint 目录下所有 .pt 文件及其修改时间
+   - 计算距上次 checkpoint 已过多少时间
+   - 若超过 save_every × epoch_duration × 1.5 倍时间没有新 checkpoint，发出警告
+
+4. GPU 状态
+   - 利用率（%）和显存占用（MB）
+   - 功耗（W）是判断是否在真实计算的最可靠指标
+
+5. Watch daemon 状态
+   - 确认 watch_and_encode.py 进程存活
+   - 查看最新 log 确认 trained/encoded 计数
+```
+
+### 检测报告格式
+
+每次检测输出必须以当前时间开头（北京时间 CST，UTC+8）：
+
+```
+【YYYY-MM-DD HH:MM CST 进度检测】
+PID存活: ✅/❌  |  训练进度: X/4 完成
+[实验名] Epoch X/15, chunk Y/43, loss Z.ZZZZ
+[实验名] Epoch X/15 完成, loss Z.ZZZZ
+Checkpoint: <最新存档 epoch> @ <时间> | 距今 Xh
+GPU: GPU1 X% / XW, GPU2 X% / XW
+```
